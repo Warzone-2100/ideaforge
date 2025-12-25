@@ -755,7 +755,7 @@ ${(f.edgeCases || ['Handle empty state', 'Handle loading state', 'Handle error s
   // ============================================================================
   async generateDesignVariations(designBrief) {
     try {
-      const response = await fetch(`${this.baseURL}/design/variations`, {
+      const response = await fetch(`${API_BASE_URL}/design/variations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ designBrief }),
@@ -788,7 +788,7 @@ ${(f.edgeCases || ['Handle empty state', 'Handle loading state', 'Handle error s
   // ============================================================================
   async expandToHomepage(selectedVariation, designBrief) {
     try {
-      const response = await fetch(`${this.baseURL}/design/expand`, {
+      const response = await fetch(`${API_BASE_URL}/design/expand`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ selectedVariation, designBrief }),
