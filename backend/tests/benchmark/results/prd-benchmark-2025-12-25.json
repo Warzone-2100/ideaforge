@@ -1,0 +1,134 @@
+{
+  "timestamp": "2025-12-25T05:24:44.923Z",
+  "tests": [
+    {
+      "type": "prd",
+      "fixture": "SaaS App with Stripe",
+      "fixtureId": "saas-stripe",
+      "models": {
+        "z-ai/glm-4.7": {
+          "score": 6.8,
+          "breakdown": {
+            "functionalReqs": 10,
+            "nonFunctionalReqs": 4.5,
+            "traceability": 1.6666666666666665,
+            "specificity": 10,
+            "completeness": 8.333333333333334,
+            "technicalDepth": 5
+          },
+          "duration": 75645,
+          "cost": 0.004842900000000001,
+          "details": {
+            "wordCount": 1613,
+            "frCount": 28,
+            "sections": 29
+          }
+        },
+        "anthropic/claude-4.5-sonnet": {
+          "score": 6.7,
+          "breakdown": {
+            "functionalReqs": 10,
+            "nonFunctionalReqs": 6,
+            "traceability": 0,
+            "specificity": 8.5,
+            "completeness": 8.333333333333334,
+            "technicalDepth": 7.5
+          },
+          "duration": 107743,
+          "cost": 0.08307300000000001,
+          "details": {
+            "wordCount": 2954,
+            "frCount": 37,
+            "sections": 34
+          }
+        }
+      }
+    },
+    {
+      "type": "prd",
+      "fixture": "Auth with Firebase",
+      "fixtureId": "auth-firebase",
+      "models": {
+        "z-ai/glm-4.7": {
+          "score": 7.8,
+          "breakdown": {
+            "functionalReqs": 10,
+            "nonFunctionalReqs": 3,
+            "traceability": 8.333333333333334,
+            "specificity": 8.5,
+            "completeness": 8.333333333333334,
+            "technicalDepth": 6.25
+          },
+          "duration": 80595,
+          "cost": 0.0050636,
+          "details": {
+            "wordCount": 1644,
+            "frCount": 33,
+            "sections": 25
+          }
+        },
+        "anthropic/claude-4.5-sonnet": {
+          "score": 6.6,
+          "breakdown": {
+            "functionalReqs": 10,
+            "nonFunctionalReqs": 6,
+            "traceability": 0,
+            "specificity": 7,
+            "completeness": 8.333333333333334,
+            "technicalDepth": 8.75
+          },
+          "duration": 116239,
+          "cost": 0.092502,
+          "details": {
+            "wordCount": 3253,
+            "frCount": 51,
+            "sections": 34
+          }
+        }
+      }
+    },
+    {
+      "type": "prd",
+      "fixture": "Design-Heavy Dashboard",
+      "fixtureId": "ui-heavy",
+      "models": {
+        "z-ai/glm-4.7": {
+          "score": 6.1,
+          "breakdown": {
+            "functionalReqs": 10,
+            "nonFunctionalReqs": 4.5,
+            "traceability": 0,
+            "specificity": 8.5,
+            "completeness": 8.333333333333334,
+            "technicalDepth": 3.75
+          },
+          "duration": 39175,
+          "cost": 0.0050411,
+          "details": {
+            "wordCount": 1708,
+            "frCount": 26,
+            "sections": 28
+          }
+        },
+        "anthropic/claude-4.5-sonnet": {
+          "score": 6.9,
+          "breakdown": {
+            "functionalReqs": 10,
+            "nonFunctionalReqs": 6,
+            "traceability": 0,
+            "specificity": 10,
+            "completeness": 8.333333333333334,
+            "technicalDepth": 7.5
+          },
+          "duration": 101704,
+          "cost": 0.07274699999999999,
+          "details": {
+            "wordCount": 2566,
+            "frCount": 41,
+            "sections": 35
+          }
+        }
+      }
+    }
+  ]
+}

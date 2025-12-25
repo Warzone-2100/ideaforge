@@ -1,0 +1,179 @@
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { analyzeResearch, generateFeatures, refineFeatures, generatePRD, generatePrompt, generateStoryFiles, generateDesignBrief, chatWithExport } from './services/aiService.js';
+import { generateSkillFiles } from './services/skillsService.js';
+
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+// Middleware
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Analyze research
+app.post('/api/analyze', async (req, res) => {
+  try {
+    const { research } = req.body;
+    if (!research) {
+      return res.status(400).json({ success: false, error: 'Research content is required' });
+    }
+
+    const result = await analyzeResearch(research);
+    res.json(result);
+  } catch (error) {
+    console.error('Analysis error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Generate features
+app.post('/api/features/generate', async (req, res) => {
+  try {
+    const { research, insights } = req.body;
+    if (!research || !insights) {
+      return res.status(400).json({ success: false, error: 'Research and insights are required' });
+    }
+
+    const result = await generateFeatures(research, insights);
+    res.json(result);
+  } catch (error) {
+    console.error('Feature generation error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Refine features via chat
+app.post('/api/features/refine', async (req, res) => {
+  try {
+    const { message, features } = req.body;
+    if (!message) {
+      return res.status(400).json({ success: false, error: 'Message is required' });
+    }
+
+    const result = await refineFeatures(message, features);
+    res.json(result);
+  } catch (error) {
+    console.error('Feature refinement error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Generate PRD
+app.post('/api/prd/generate', async (req, res) => {
+  try {
+    const { research, insights, features } = req.body;
+    if (!features || features.length === 0) {
+      return res.status(400).json({ success: false, error: 'Features are required' });
+    }
+
+    const result = await generatePRD(research, insights, features);
+    res.json(result);
+  } catch (error) {
+    console.error('PRD generation error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Generate story files (BMAD-style atomic stories)
+app.post('/api/stories/generate', async (req, res) => {
+  try {
+    const { features, prd } = req.body;
+    if (!features || features.length === 0) {
+      return res.status(400).json({ success: false, error: 'Features are required' });
+    }
+
+    const result = await generateStoryFiles(features, prd);
+    res.json(result);
+  } catch (error) {
+    console.error('Story generation error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Generate design brief (specific UI/UX direction)
+app.post('/api/design/generate', async (req, res) => {
+  try {
+    const { research, insights, features, productContext } = req.body;
+    if (!features || features.length === 0) {
+      return res.status(400).json({ success: false, error: 'Features are required' });
+    }
+
+    const result = await generateDesignBrief(research, insights, features, productContext);
+    res.json(result);
+  } catch (error) {
+    console.error('Design brief generation error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Chat/ideation for export refinement
+app.post('/api/export/chat', async (req, res) => {
+  try {
+    const { message, context } = req.body;
+    if (!message) {
+      return res.status(400).json({ success: false, error: 'Message is required' });
+    }
+
+    const result = await chatWithExport(message, context || {});
+    res.json(result);
+  } catch (error) {
+    console.error('Export chat error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Generate prompts for different formats
+app.post('/api/export/:format', async (req, res) => {
+  try {
+    const { format } = req.params;
+    const { research, insights, features, prd } = req.body;
+
+    if (!['claude', 'cursor', 'gemini', 'universal'].includes(format)) {
+      return res.status(400).json({ success: false, error: 'Invalid format' });
+    }
+
+    const result = await generatePrompt(format, research, insights, features, prd);
+
+    // Add exportable SKILL.md files
+    if (result.success && result.detectedSkills && result.detectedSkills.length > 0) {
+      const skillFiles = generateSkillFiles(result.detectedSkills);
+      result.skillFiles = skillFiles;
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error('Prompt generation error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`
+  ╔═══════════════════════════════════════════════════╗
+  ║                                                   ║
+  ║   💡 IdeaForge Backend                            ║
+  ║                                                   ║
+  ║   Server running on http://localhost:${PORT}         ║
+  ║                                                   ║
+  ║   Endpoints:                                      ║
+  ║   POST /api/analyze          - Analyze research   ║
+  ║   POST /api/features/generate - Generate features ║
+  ║   POST /api/features/refine  - Chat refinement    ║
+  ║   POST /api/prd/generate     - Generate PRD       ║
+  ║   POST /api/design/generate  - Generate design    ║
+  ║   POST /api/stories/generate - Generate stories   ║
+  ║   POST /api/export/chat      - Export ideation    ║
+  ║   POST /api/export/:format   - Export prompts     ║
+  ║                                                   ║
+  ╚═══════════════════════════════════════════════════╝
+  `);
+});

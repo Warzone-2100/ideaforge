@@ -1,0 +1,84 @@
+[
+  {
+    "id": "saas-stripe",
+    "name": "SaaS App with Stripe",
+    "research": "Building a SaaS platform for project management. Need Stripe integration for subscription billing. Users should be able to upgrade/downgrade plans. Must support annual and monthly billing. Need customer portal for self-service. Target market is small teams (5-20 people). Three tiers: Starter ($9/mo), Team ($29/mo), Enterprise ($99/mo). Annual plans get 20% discount. Users need to manage payment methods, view invoices, and cancel subscriptions themselves.",
+    "expectedSkills": ["stripe-billing", "nextjs-app-router"],
+    "expectedFeatures": 3,
+    "complexity": "medium"
+  },
+  {
+    "id": "auth-firebase",
+    "name": "Auth with Firebase",
+    "research": "E-commerce platform needs user authentication. Want Google sign-in and email/password. Need protected routes for checkout. Users should stay logged in. Session management is critical for cart persistence. Admin dashboard requires role-based access control. Must handle password resets and email verification. Security is paramount - need session cookies, not just client-side tokens.",
+    "expectedSkills": ["firebase-auth", "nextjs-app-router"],
+    "expectedFeatures": 4,
+    "complexity": "medium"
+  },
+  {
+    "id": "ui-heavy",
+    "name": "Design-Heavy Dashboard",
+    "research": "Analytics dashboard with real-time charts. Needs dark mode. Should look like Linear - clean, fast, beautiful. Color scheme: dark blue (#0A0E27), accent purple (#6C5CE7). Typography: Inter for UI, JetBrains Mono for code. Cards with subtle shadows. Animated transitions. Chart library should be lightweight. Mobile responsive. Loading states should feel instant. Micro-interactions on hover. Command palette like Vercel.",
+    "expectedSkills": ["nextjs-app-router"],
+    "expectedFeatures": 5,
+    "complexity": "high",
+    "designFocus": true
+  },
+  {
+    "id": "complex-workflow",
+    "name": "Multi-Step Workflow App",
+    "research": "Loan application system. Users fill multi-step form (personal info, employment, financials). Save progress between steps. Admin dashboard to review applications. Status tracking (pending, approved, rejected). Email notifications at each stage. Document upload for pay stubs and tax returns. Compliance requirements: data encryption, audit logs, GDPR compliance. Integration with credit check API. Automated risk scoring. Application review workflow with multiple approval levels.",
+    "expectedSkills": ["nextjs-app-router"],
+    "expectedFeatures": 8,
+    "complexity": "high"
+  },
+  {
+    "id": "simple-crud",
+    "name": "Simple CRUD App",
+    "research": "Todo list application. Users can add, edit, delete tasks. Mark as complete. Filter by status (all, active, completed). Due dates optional. Tags for categorization. Simple and clean interface. Local storage for persistence. Keyboard shortcuts for power users. Dark mode toggle.",
+    "expectedSkills": ["nextjs-app-router"],
+    "expectedFeatures": 3,
+    "complexity": "low"
+  },
+  {
+    "id": "marketplace",
+    "name": "Two-Sided Marketplace",
+    "research": "Freelancer marketplace connecting clients with designers. Stripe Connect for split payments - platform takes 15% commission. Escrow system: clients deposit funds, released on milestone completion. Messaging between clients and freelancers. Portfolio galleries for freelancers. Job posting and bidding system. Rating and review system. Dispute resolution workflow. KYC verification for freelancers receiving payments over $600. Payout dashboard showing earnings, fees, and available balance.",
+    "expectedSkills": ["stripe-billing", "firebase-auth", "nextjs-app-router"],
+    "expectedFeatures": 10,
+    "complexity": "high"
+  },
+  {
+    "id": "content-platform",
+    "name": "Content Publishing Platform",
+    "research": "Medium-style blogging platform. Rich text editor with markdown support. Image uploads to cloud storage. SEO optimization - meta tags, open graph, sitemap generation. Reading time estimates. Clap/like system. Comments with nested replies. Author profiles with follower counts. Draft/publish workflow. Analytics for authors (views, reads, engagement). Newsletter integration - collect emails and send updates. Content moderation tools for admins.",
+    "expectedSkills": ["firebase-auth", "nextjs-app-router"],
+    "expectedFeatures": 7,
+    "complexity": "medium"
+  },
+  {
+    "id": "booking-system",
+    "name": "Appointment Booking System",
+    "research": "Hair salon booking system. Customers book appointments online. Calendar view showing availability. Multiple service types (haircut $50, color $120, styling $80). Stylist selection or auto-assign. Email/SMS reminders 24hrs before. Cancellation policy: free cancellation up to 12hrs before, 50% charge within 12hrs. Stripe payment at booking with cancellation refund logic. Admin dashboard for salon owner to manage stylists, services, hours of operation. Block out vacation days. Recurring appointments for regulars.",
+    "expectedSkills": ["stripe-billing", "nextjs-app-router"],
+    "expectedFeatures": 6,
+    "complexity": "medium"
+  },
+  {
+    "id": "ai-integration",
+    "name": "AI-Powered Chat Application",
+    "research": "Customer support chatbot using OpenAI GPT-4. Train on company knowledge base (docs, FAQs, past tickets). Real-time streaming responses. Conversation history persistence. Handoff to human agent when AI can't help. Sentiment analysis to prioritize urgent issues. Multi-language support. Analytics dashboard showing resolution rate, average response time, customer satisfaction scores. Integration with Zendesk for ticket creation. Cost tracking per conversation (OpenAI token usage).",
+    "expectedSkills": ["nextjs-app-router"],
+    "expectedFeatures": 8,
+    "complexity": "high"
+  },
+  {
+    "id": "minimal-landing",
+    "name": "Minimal Product Landing Page",
+    "research": "Landing page for new SaaS product. Hero section with benefit-driven headline. Animated product demo video. Three pricing tiers. Customer testimonials with photos. Email waitlist signup. FAQ accordion. Footer with links. Design inspiration: Stripe's clarity, Vercel's minimalism. Animations should be subtle. Fast loading critical. Mobile-first design. Typography: Inter. Color palette: Clean whites, one accent color (#3B82F6).",
+    "expectedSkills": ["nextjs-app-router"],
+    "expectedFeatures": 2,
+    "complexity": "low",
+    "designFocus": true
+  }
+]

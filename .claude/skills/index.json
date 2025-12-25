@@ -1,0 +1,94 @@
+{
+  "version": "1.0.0",
+  "description": "Skills library for IdeaForge - Integration patterns and best practices for Claude Code",
+  "updated": "2024-12-24",
+  "skills": [
+    {
+      "name": "nextjs-app-router",
+      "version": "1.0.0",
+      "category": "framework",
+      "complexity": "foundational",
+      "description": "Modern Next.js 14+ patterns: App Router, Server Components, Server Actions, Middleware",
+      "path": "./nextjs-app-router/skill.md",
+      "requires_mcp": ["context7"],
+      "requires_skills": [],
+      "keywords": ["nextjs", "react", "server-components", "app-router", "ssr"]
+    },
+    {
+      "name": "firebase-auth",
+      "version": "1.0.0",
+      "category": "auth",
+      "complexity": "intermediate",
+      "description": "Complete Firebase Authentication: email/password, OAuth, session management, protected routes",
+      "path": "./firebase-auth/skill.md",
+      "requires_mcp": ["context7", "firebase"],
+      "requires_skills": ["nextjs-app-router"],
+      "keywords": ["firebase", "auth", "oauth", "google", "github", "session"]
+    },
+    {
+      "name": "stripe-billing",
+      "version": "1.0.0",
+      "category": "payments",
+      "complexity": "intermediate",
+      "description": "Complete Stripe integration for SaaS billing: checkout, subscriptions, webhooks, customer portal",
+      "path": "./stripe-billing/skill.md",
+      "requires_mcp": ["context7", "stripe"],
+      "requires_skills": ["nextjs-app-router"],
+      "keywords": ["stripe", "payments", "billing", "subscriptions", "checkout", "webhooks"]
+    }
+  ],
+  "categories": {
+    "framework": {
+      "description": "Core frameworks and fundamental patterns",
+      "order": 1
+    },
+    "auth": {
+      "description": "Authentication and authorization",
+      "order": 2
+    },
+    "payments": {
+      "description": "Payment processing and billing",
+      "order": 3
+    },
+    "database": {
+      "description": "Database and data layer patterns",
+      "order": 4
+    },
+    "infra": {
+      "description": "Infrastructure and deployment",
+      "order": 5
+    }
+  },
+  "mcp_servers": {
+    "context7": {
+      "description": "Fetch up-to-date documentation for any library",
+      "install": "claude mcp add context7 -- npx -y @upstash/context7-mcp"
+    },
+    "firebase": {
+      "description": "Firebase project management, Auth, Firestore",
+      "install": "claude mcp add firebase -- npx -y firebase-mcp"
+    },
+    "stripe": {
+      "description": "Stripe API access and payment patterns",
+      "install": "claude mcp add stripe -- npx -y @stripe/mcp",
+      "requires_env": "STRIPE_API_KEY"
+    }
+  },
+  "usage": {
+    "prompt_injection": "When generating code for an integration, include the relevant skill's Quick Start section at minimum. For production code, use the Full Implementation patterns.",
+    "detection_patterns": [
+      {
+        "trigger": ["stripe", "payment", "checkout", "subscription", "billing"],
+        "skill": "stripe-billing"
+      },
+      {
+        "trigger": ["firebase", "auth", "login", "signup", "oauth", "google sign"],
+        "skill": "firebase-auth"
+      },
+      {
+        "trigger": ["nextjs", "app router", "server component", "server action"],
+        "skill": "nextjs-app-router"
+      }
+    ]
+  }
+}
