@@ -61,7 +61,7 @@ export default function VariationCard({ variation, isSelected, onSelect }) {
           <iframe
             src={previewURL}
             className="w-full h-full border-0 pointer-events-none"
-            sandbox="allow-same-origin"
+            sandbox="allow-same-origin allow-scripts"
             title={`Preview of ${variation.description}`}
             onError={() => setImageError(true)}
           />
