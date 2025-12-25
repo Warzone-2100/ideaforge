@@ -68,6 +68,7 @@ export default function ExportStep() {
     setCurrentStep,
     getAcceptedFeatures,
     setDesignBrief: setDesignBriefInStore,
+    designVariations,
   } = useAppStore();
 
   const [generatedPrompts, setGeneratedPrompts] = useState({});
@@ -378,6 +379,13 @@ export default function ExportStep() {
       generatePrompt(exportFormat);
     }
   }, [exportFormat]);
+
+  // Sync design brief from store to local state (for mock data support)
+  useEffect(() => {
+    if (designVariations?.designBrief && !designBrief) {
+      setDesignBrief(designVariations.designBrief);
+    }
+  }, [designVariations?.designBrief]);
 
   const handleFormatChange = (formatId) => {
     setExportFormat(formatId);
