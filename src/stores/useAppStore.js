@@ -51,6 +51,16 @@ const useAppStore = create(
       // Chat messages for refinement
       chatMessages: [],
 
+      // Design Variations (NEW - Option 1)
+      designVariations: {
+        variations: [],       // Array of 3 generated variations
+        selected: null,       // Selected variation object
+        homepage: null,       // Expanded homepage HTML/CSS/JS
+        designBrief: null,    // Stored design brief for variations
+        isGenerating: false,  // Loading state for variations
+        isExpanding: false,   // Loading state for expansion
+      },
+
       // Usage tracking (for development/monitoring)
       usageTracking: {
         enabled: true,
@@ -66,6 +76,8 @@ const useAppStore = create(
           prd: { requests: 0, tokens: 0, cost: 0 },
           storyFiles: { requests: 0, tokens: 0, cost: 0 },
           designBrief: { requests: 0, tokens: 0, cost: 0 },
+          designVariations: { requests: 0, tokens: 0, cost: 0 },
+          expandHomepage: { requests: 0, tokens: 0, cost: 0 },
           chatWithExport: { requests: 0, tokens: 0, cost: 0 },
           export: { requests: 0, tokens: 0, cost: 0 },
         },
@@ -200,6 +212,54 @@ const useAppStore = create(
 
       clearChatMessages: () => set({ chatMessages: [] }),
 
+      // Design Variations actions
+      setDesignBrief: (designBrief) => set((state) => ({
+        designVariations: { ...state.designVariations, designBrief },
+      })),
+
+      setDesignVariations: (variations) => set((state) => ({
+        designVariations: {
+          ...state.designVariations,
+          variations,
+          isGenerating: false,
+        },
+      })),
+
+      setGeneratingVariations: (isGenerating) => set((state) => ({
+        designVariations: { ...state.designVariations, isGenerating },
+      })),
+
+      selectVariation: (variation) => set((state) => ({
+        designVariations: {
+          ...state.designVariations,
+          selected: variation,
+          homepage: null, // Clear homepage when selecting new variation
+        },
+      })),
+
+      setHomepage: (homepage) => set((state) => ({
+        designVariations: {
+          ...state.designVariations,
+          homepage,
+          isExpanding: false,
+        },
+      })),
+
+      setExpandingHomepage: (isExpanding) => set((state) => ({
+        designVariations: { ...state.designVariations, isExpanding },
+      })),
+
+      clearDesignVariations: () => set((state) => ({
+        designVariations: {
+          variations: [],
+          selected: null,
+          homepage: null,
+          designBrief: null,
+          isGenerating: false,
+          isExpanding: false,
+        },
+      })),
+
       // Usage tracking actions
       addUsageRecord: (taskName, meta) => set((state) => {
         if (!state.usageTracking.enabled || !meta) return {};
@@ -256,6 +316,8 @@ const useAppStore = create(
             prd: { requests: 0, tokens: 0, cost: 0 },
             storyFiles: { requests: 0, tokens: 0, cost: 0 },
             designBrief: { requests: 0, tokens: 0, cost: 0 },
+            designVariations: { requests: 0, tokens: 0, cost: 0 },
+            expandHomepage: { requests: 0, tokens: 0, cost: 0 },
             chatWithExport: { requests: 0, tokens: 0, cost: 0 },
             export: { requests: 0, tokens: 0, cost: 0 },
           },

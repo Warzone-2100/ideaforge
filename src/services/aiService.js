@@ -749,6 +749,68 @@ ${(f.edgeCases || ['Handle empty state', 'Handle loading state', 'Handle error s
       totalComplexity: `${stories.length} stories`,
     };
   }
+
+  // ============================================================================
+  // DESIGN VARIATIONS - Multi-model UI component generation
+  // ============================================================================
+  async generateDesignVariations(designBrief) {
+    try {
+      const response = await fetch(`${this.baseURL}/design/variations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ designBrief }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      // Track usage for each variation
+      if (data._meta && data.variations) {
+        data.variations.forEach((variation) => {
+          if (variation._meta) {
+            trackUsage('designVariations', variation._meta);
+          }
+        });
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Design variations generation failed:', error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // EXPAND TO HOMEPAGE - Transform component into full homepage
+  // ============================================================================
+  async expandToHomepage(selectedVariation, designBrief) {
+    try {
+      const response = await fetch(`${this.baseURL}/design/expand`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selectedVariation, designBrief }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      // Track usage
+      if (data._meta) {
+        trackUsage('expandHomepage', data._meta);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Homepage expansion failed:', error);
+      throw error;
+    }
+  }
 }
 
 export const aiService = new AIService();

@@ -78,6 +78,26 @@ export const MODEL_CONFIGS = {
     maxTokens: 8000,
     temperature: 0.7,
   },
+
+  // 🎨 DESIGN VARIATIONS - Multi-model comparison (3 models in parallel)
+  // NEW: Generate 3 different UI interpretations of design brief
+  designVariations: {
+    models: [
+      'google/gemini-3-flash-preview',      // Model 1: Google's design-focused
+      'anthropic/claude-4.5-haiku-20251001', // Model 2: Claude's structured approach
+      'deepseek/deepseek-v3.2',             // Model 3: DeepSeek's alternative style
+    ],
+    maxTokens: 4000,
+    temperature: 0.7,
+  },
+
+  // Step 9: Expand variation to full homepage (uses MAX BRAIN)
+  expandHomepage: {
+    primary: 'anthropic/claude-4.5-sonnet-20250929',
+    fallback: 'openai/gpt-5.2',
+    maxTokens: 12000,
+    temperature: 0.7,
+  },
 };
 
 /**
@@ -145,6 +165,9 @@ export const MODEL_PRICING = {
   // TIER 3: SPEED ($0.10-$0.20 / $0.40-$0.50)
   'google/gemini-2.5-flash-lite': { input: 0.10, output: 0.40 },
   'x-ai/grok-4.1-fast': { input: 0.20, output: 0.50 },
+
+  // Design Variations Models
+  'deepseek/deepseek-v3.2': { input: 0.27, output: 1.10 },
 
   // Legacy/Fallback models
   'google/gemini-2.0-flash-001': { input: 0.10, output: 0.40 },

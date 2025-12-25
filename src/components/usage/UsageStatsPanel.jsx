@@ -18,9 +18,9 @@ const getTierColor = (taskName) => {
   // SPEED tier (green) - gemini-flash-lite
   const speedTasks = ['analysis', 'refineFeatures', 'chatWithExport'];
   // MEDIUM tier (yellow) - claude-haiku, gemini-flash
-  const mediumTasks = ['features', 'designBrief'];
+  const mediumTasks = ['features', 'designBrief', 'designVariations'];
   // MAX BRAIN tier (red) - claude-sonnet
-  const maxTasks = ['prd', 'storyFiles', 'export'];
+  const maxTasks = ['prd', 'storyFiles', 'export', 'expandHomepage'];
 
   if (speedTasks.includes(taskName)) return 'text-green-400';
   if (mediumTasks.includes(taskName)) return 'text-yellow-400';
@@ -31,8 +31,8 @@ const getTierColor = (taskName) => {
 // Helper function to get tier badge
 const getTierBadge = (taskName) => {
   const speedTasks = ['analysis', 'refineFeatures', 'chatWithExport'];
-  const mediumTasks = ['features', 'designBrief'];
-  const maxTasks = ['prd', 'storyFiles', 'export'];
+  const mediumTasks = ['features', 'designBrief', 'designVariations'];
+  const maxTasks = ['prd', 'storyFiles', 'export', 'expandHomepage'];
 
   if (speedTasks.includes(taskName)) {
     return <span className="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-400">⚡ SPEED</span>;
@@ -55,6 +55,8 @@ const formatTaskName = (taskName) => {
     prd: 'PRD',
     storyFiles: 'Story Files',
     designBrief: 'Design Brief',
+    designVariations: 'Design Variations',
+    expandHomepage: 'Expand Homepage',
     chatWithExport: 'Export Chat',
     export: 'Export Prompt',
   };

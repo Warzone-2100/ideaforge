@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { analyzeResearch, generateFeatures, refineFeatures, generatePRD, generatePrompt, generateStoryFiles, generateDesignBrief, chatWithExport } from './services/aiService.js';
+import { analyzeResearch, generateFeatures, refineFeatures, generatePRD, generatePrompt, generateStoryFiles, generateDesignBrief, chatWithExport, generateDesignVariations, expandToHomepage } from './services/aiService.js';
 import { generateSkillFiles } from './services/skillsService.js';
 
 dotenv.config();
@@ -155,6 +155,38 @@ app.post('/api/export/:format', async (req, res) => {
   }
 });
 
+// Generate design variations (3 models in parallel)
+app.post('/api/design/variations', async (req, res) => {
+  try {
+    const { designBrief } = req.body;
+    if (!designBrief) {
+      return res.status(400).json({ success: false, error: 'Design brief is required' });
+    }
+
+    const result = await generateDesignVariations(designBrief);
+    res.json(result);
+  } catch (error) {
+    console.error('Design variations generation error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Expand variation to full homepage
+app.post('/api/design/expand', async (req, res) => {
+  try {
+    const { selectedVariation, designBrief } = req.body;
+    if (!selectedVariation || !designBrief) {
+      return res.status(400).json({ success: false, error: 'Selected variation and design brief are required' });
+    }
+
+    const result = await expandToHomepage(selectedVariation, designBrief);
+    res.json(result);
+  } catch (error) {
+    console.error('Homepage expansion error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`
@@ -170,6 +202,8 @@ app.listen(PORT, () => {
   ║   POST /api/features/refine  - Chat refinement    ║
   ║   POST /api/prd/generate     - Generate PRD       ║
   ║   POST /api/design/generate  - Generate design    ║
+  ║   POST /api/design/variations - 🎨 3 UI variations ║
+  ║   POST /api/design/expand    - 🚀 Expand homepage  ║
   ║   POST /api/stories/generate - Generate stories   ║
   ║   POST /api/export/chat      - Export ideation    ║
   ║   POST /api/export/:format   - Export prompts     ║

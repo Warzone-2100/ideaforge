@@ -3003,3 +3003,207 @@ ${(prd || '').substring(0, 4000)}
     throw error;
   }
 }
+
+// ============================================================================
+// DESIGN VARIATIONS - Multi-model UI component generation
+// ============================================================================
+export async function generateDesignVariations(designBrief, options = {}) {
+  const systemPrompt = `You are an expert UI/UX designer creating a self-contained, production-ready component.
+
+TASK: Generate HTML/CSS/JS for a SINGLE KEY COMPONENT from the design brief.
+Focus on creating ONE visually distinctive element (like a hero section, pricing card, or feature showcase).
+
+REQUIREMENTS:
+1. **Self-contained**: All CSS inline or in a <style> tag, all JS in <script> tags
+2. **Modern & Distinctive**: Use the exact design system from the brief (colors, typography, spacing)
+3. **Production-ready**: Clean, semantic HTML with proper accessibility
+4. **Material metaphors only**: NO artist names, NO copyrighted references
+5. **Responsive**: Mobile-first, works 320px-2560px
+6. **Interactive**: Include subtle hover effects, transitions where appropriate
+
+OUTPUT FORMAT (JSON):
+{
+  "html": "<!DOCTYPE html>...",
+  "css": "/* Component styles */",
+  "js": "// Interactive behaviors",
+  "componentType": "hero|pricing|feature|card",
+  "description": "Brief description of the design approach"
+}
+
+Return ONLY valid JSON. No markdown formatting, no explanations outside the JSON.`;
+
+  const userMessage = `Design Brief:
+${JSON.stringify(designBrief, null, 2)}
+
+Create a distinctive, production-ready component that embodies this design system.`;
+
+  const config = MODEL_CONFIGS.designVariations;
+  const models = config.models;
+
+  try {
+    // Generate 3 variations in parallel using different models
+    const variationPromises = models.map(async (model, index) => {
+      try {
+        const { content, usage } = await callAI(systemPrompt, userMessage, {
+          model,
+          maxTokens: config.maxTokens,
+          temperature: config.temperature,
+        });
+
+        // Parse JSON response
+        let parsed;
+        try {
+          // Try to extract JSON if wrapped in markdown
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+        } catch (parseError) {
+          console.error(`[Variation ${index + 1}] JSON parse error:`, parseError);
+          throw new Error(`Failed to parse JSON from ${model}`);
+        }
+
+        return {
+          id: `variation-${index + 1}`,
+          model,
+          html: parsed.html || '',
+          css: parsed.css || '',
+          js: parsed.js || '',
+          componentType: parsed.componentType || 'component',
+          description: parsed.description || `Variation ${index + 1}`,
+          _meta: {
+            model: usage.model,
+            tokens: usage.totalTokens,
+            cost: usage.cost.total,
+            timestamp: new Date().toISOString(),
+          },
+        };
+      } catch (error) {
+        console.error(`[Variation ${index + 1}] Model ${model} failed:`, error);
+        // Return placeholder if a model fails
+        return {
+          id: `variation-${index + 1}`,
+          model,
+          html: '<div>Error generating variation</div>',
+          css: '',
+          js: '',
+          componentType: 'error',
+          description: `Failed: ${error.message}`,
+          _meta: {
+            model,
+            tokens: 0,
+            cost: 0,
+            timestamp: new Date().toISOString(),
+            error: error.message,
+          },
+        };
+      }
+    });
+
+    const variations = await Promise.all(variationPromises);
+
+    // Calculate total cost across all variations
+    const totalCost = variations.reduce((sum, v) => sum + (v._meta.cost || 0), 0);
+    const totalTokens = variations.reduce((sum, v) => sum + (v._meta.tokens || 0), 0);
+
+    return {
+      success: true,
+      variations,
+      _meta: {
+        models: models,
+        totalVariations: variations.length,
+        tokens: totalTokens,
+        cost: totalCost,
+        timestamp: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('Design variations generation error:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
+// EXPAND TO HOMEPAGE - Transform component into full 8-section homepage
+// ============================================================================
+export async function expandToHomepage(selectedVariation, designBrief, options = {}) {
+  const systemPrompt = `You are a senior frontend developer expanding a component into a complete homepage.
+
+TASK: Transform the provided component into a FULL 8-SECTION HOMEPAGE while maintaining design consistency.
+
+SECTIONS TO INCLUDE:
+1. **Hero**: Attention-grabbing introduction (use/adapt the selected component)
+2. **Features**: 3-6 key product features with icons/images
+3. **How It Works**: Step-by-step process (numbered or visual)
+4. **Social Proof**: Testimonials or customer logos
+5. **Pricing**: Tiered pricing table (if applicable) or value proposition
+6. **FAQ**: Common questions with expandable answers
+7. **CTA**: Final call-to-action with conversion focus
+8. **Footer**: Links, legal, social media
+
+REQUIREMENTS:
+1. **Design Consistency**: Maintain exact colors, typography, spacing from the component
+2. **Responsive**: Mobile-first, works 320px-2560px
+3. **Semantic HTML**: Proper heading hierarchy, ARIA labels
+4. **Self-contained**: All CSS inline or in <style> tag, JS in <script> tags
+5. **Production-ready**: No placeholders, realistic copy based on design brief
+6. **Interactive**: Smooth scrolling, FAQ toggles, mobile menu (if header included)
+
+OUTPUT FORMAT (JSON):
+{
+  "html": "<!DOCTYPE html>...",
+  "css": "/* Full homepage styles */",
+  "js": "// Interactive behaviors for all sections",
+  "sections": ["hero", "features", "how-it-works", "social-proof", "pricing", "faq", "cta", "footer"],
+  "description": "Overview of the homepage design"
+}
+
+Return ONLY valid JSON. No markdown, no explanations.`;
+
+  const userMessage = `Original Component:
+${selectedVariation.html}
+
+Original Component CSS:
+${selectedVariation.css}
+
+Original Component JS:
+${selectedVariation.js}
+
+Design Brief:
+${JSON.stringify(designBrief, null, 2)}
+
+Expand this component into a complete, production-ready homepage with all 8 sections. Maintain the design system perfectly.`;
+
+  try {
+    const config = MODEL_CONFIGS.expandHomepage;
+    const { content, usage } = await callAIWithFallback(systemPrompt, userMessage, config);
+
+    // Parse JSON response
+    let parsed;
+    try {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+    } catch (parseError) {
+      console.error('Homepage expansion JSON parse error:', parseError);
+      throw new Error('Failed to parse homepage JSON response');
+    }
+
+    return {
+      success: true,
+      homepage: {
+        html: parsed.html || '',
+        css: parsed.css || '',
+        js: parsed.js || '',
+        sections: parsed.sections || [],
+        description: parsed.description || 'Full homepage expansion',
+      },
+      _meta: {
+        model: usage.model,
+        tokens: usage.totalTokens,
+        cost: usage.cost.total,
+        timestamp: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('Homepage expansion error:', error);
+    throw error;
+  }
+}

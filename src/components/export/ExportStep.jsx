@@ -18,12 +18,14 @@ import {
   MessageSquare,
   Send,
   Sparkles,
-  X
+  X,
+  Wand2
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import useAppStore from '../../stores/useAppStore';
 import { aiService } from '../../services/aiService';
+import DesignVariationsStep from '../design/DesignVariationsStep';
 
 const formats = [
   {
@@ -65,6 +67,7 @@ export default function ExportStep() {
     setExportFormat,
     setCurrentStep,
     getAcceptedFeatures,
+    setDesignBrief: setDesignBriefInStore,
   } = useAppStore();
 
   const [generatedPrompts, setGeneratedPrompts] = useState({});
@@ -93,6 +96,9 @@ export default function ExportStep() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+
+  // Design variations modal state
+  const [showDesignVariations, setShowDesignVariations] = useState(false);
 
   const generateStories = async () => {
     setStoriesLoading(true);
@@ -160,6 +166,7 @@ export default function ExportStep() {
 
       if (result.success) {
         setDesignBrief(result.designBrief);
+        setDesignBriefInStore(result.designBrief); // Save to Zustand store for design variations
       } else {
         setDesignError(result.error || 'Failed to generate design brief');
       }
@@ -641,31 +648,44 @@ export default function ExportStep() {
             ) : designBrief ? (
               <>
                 {/* Actions */}
-                <div className="flex items-center justify-end gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  {/* Design Variations Button */}
                   <button
-                    onClick={generateDesign}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium
-                             bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors"
+                    onClick={() => setShowDesignVariations(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
+                             bg-gradient-to-r from-indigo-500 to-purple-500 text-white
+                             hover:from-indigo-400 hover:to-purple-400 transition-all shadow-lg shadow-indigo-500/30"
                   >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Regenerate
+                    <Wand2 className="w-4 h-4" />
+                    Generate 3 UI Variations
                   </button>
-                  <button
-                    onClick={downloadDesignAsMarkdown}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium
-                             bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    Markdown
-                  </button>
-                  <button
-                    onClick={downloadDesignBrief}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium
-                             bg-pink-500 text-white hover:bg-pink-400 transition-colors"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    JSON
-                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={generateDesign}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium
+                               bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Regenerate
+                    </button>
+                    <button
+                      onClick={downloadDesignAsMarkdown}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium
+                               bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Markdown
+                    </button>
+                    <button
+                      onClick={downloadDesignBrief}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium
+                               bg-pink-500 text-white hover:bg-pink-400 transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      JSON
+                    </button>
+                  </div>
                 </div>
 
                 {/* Visual Identity */}
@@ -1217,6 +1237,29 @@ export default function ExportStep() {
           Workflow complete!
         </div>
       </div>
+
+      {/* Design Variations Modal */}
+      {showDesignVariations && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-7xl bg-zinc-900 rounded-xl border border-zinc-800 shadow-2xl my-8">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+              <h2 className="text-xl font-semibold text-white">Design Variations</h2>
+              <button
+                onClick={() => setShowDesignVariations(false)}
+                className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <DesignVariationsStep />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
