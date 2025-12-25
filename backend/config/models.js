@@ -83,12 +83,12 @@ export const MODEL_CONFIGS = {
   // NEW: Generate 3 different UI interpretations of design brief
   designVariations: {
     models: [
-      'google/gemini-3-flash-preview',      // Model 1: Google's design-focused
-      'anthropic/claude-4.5-haiku-20251001', // Model 2: Claude's structured approach
-      'deepseek/deepseek-v3.2',             // Model 3: DeepSeek's alternative style
+      'google/gemini-3-flash-preview',      // Model 1: Reliable and fast
+      'google/gemini-3-flash-preview',      // Model 2: Same model, different variation
+      'google/gemini-3-flash-preview',      // Model 3: Same model, different variation
     ],
     maxTokens: 8000, // Increased from 4000 to handle larger HTML/CSS
-    temperature: 0.7,
+    temperature: 0.9, // Higher temperature for more variety between runs
   },
 
   // Step 9: Expand variation to full homepage (uses MAX BRAIN)
