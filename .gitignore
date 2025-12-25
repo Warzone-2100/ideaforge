@@ -27,3 +27,6 @@ backend/.env
 *.njsproj
 *.sln
 *.sw?
+
+# Example exports (don't commit)
+examples/

@@ -621,6 +621,732 @@ export const mockDesignBrief = {
   },
 };
 
+export const mockDesignPreferences = {
+  palette: 'cool',
+  style: 'minimal',
+  references: ['linear', 'notion'],
+  mood: ['calm', 'efficient', 'innovative'],
+};
+
+export const mockAgentPrompts = {
+  claude: `# CLAUDE.md - TaskFlow AI Implementation Guide
+
+## Project Overview
+TaskFlow AI is an intelligent task management platform that eliminates cognitive overhead through AI-powered prioritization, natural language input, and unified context awareness.
+
+## Tech Stack
+- **Frontend:** React 19 + Vite, Tailwind CSS v4
+- **Mobile:** React Native (iOS/Android)
+- **State:** Zustand + React Query
+- **Backend:** Node.js + Express, PostgreSQL + Redis
+- **AI/ML:** Python microservices (FastAPI), OpenAI GPT-4
+
+## Core Features (MVP)
+
+### FR1: Smart Quick Capture
+<feature>
+Natural language task input with automatic parsing of:
+- Due dates/times (15+ formats)
+- Priority levels (!high, !medium, !low)
+- Tags (#work, #personal)
+- Subtasks
+
+<technical>
+- NLP service for intent parsing
+- Sub-200ms response time requirement
+- Offline capture with queue sync
+</technical>
+
+<acceptance-criteria>
+- User types "Buy milk tomorrow at 5pm #shopping !high"
+- System extracts: due=tomorrow 5pm, priority=high, tag=shopping
+- Task appears within 200ms
+- Ambiguous dates default to sensible values (e.g., "next week" = next Monday)
+</acceptance-criteria>
+</feature>
+
+### FR2: AI Priority Assistant
+<feature>
+ML-powered automatic prioritization based on:
+- Deadline proximity
+- Calendar availability
+- Historical patterns
+- Manual overrides
+
+<technical>
+- ML model training pipeline
+- Real-time calendar sync
+- Explainable AI (show reasoning)
+</technical>
+
+<acceptance-criteria>
+- Learns from user behavior patterns
+- Surfaces urgent tasks (due within 24 hours)
+- Shows explanations ("Due soon", "Matches your 9am pattern")
+- User can override with manual adjustments
+</acceptance-criteria>
+</feature>
+
+### FR3: Unified Context Dashboard
+<feature>
+Single view combining:
+- Today's calendar events
+- Prioritized task list
+- Available time blocks
+- Quick notes
+
+<technical>
+- Calendar API integrations (Google, Outlook, Apple)
+- Real-time sync engine
+- WebSocket for live updates
+</technical>
+</feature>
+
+## Implementation Guidelines
+
+### State Management
+\`\`\`javascript
+// Use Zustand for global state
+const useTaskStore = create((set) => ({
+  tasks: [],
+  addTask: (task) => set((state) => ({
+    tasks: [...state.tasks, task]
+  })),
+  // ... other actions
+}));
+\`\`\`
+
+### Natural Language Parsing
+\`\`\`javascript
+// Example NLP service integration
+const parseTaskInput = async (text) => {
+  const response = await fetch('/api/parse', {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  });
+  return response.json(); // { text, dueDate, priority, tags }
+};
+\`\`\`
+
+### Calendar Integration
+\`\`\`javascript
+// Google Calendar API integration
+import { google } from 'googleapis';
+
+const calendar = google.calendar({
+  version: 'v3',
+  auth: oauth2Client,
+});
+
+const events = await calendar.events.list({
+  calendarId: 'primary',
+  timeMin: new Date().toISOString(),
+  maxResults: 10,
+  singleEvents: true,
+  orderBy: 'startTime',
+});
+\`\`\`
+
+## UI/UX Guidelines
+
+### Design Principles
+- **Reduce cognitive load** - If it needs explanation, it's too complex
+- **Mobile-first** - 60%+ usage will be mobile
+- **Progressive complexity** - Simple by default, advanced features hidden
+
+### Color Palette
+\`\`\`css
+:root {
+  --primary: #4F46E5;
+  --secondary: #8B5CF6;
+  --background: #FAFAFA;
+  --text: #18181B;
+  --success: #10B981;
+  --warning: #F59E0B;
+  --error: #EF4444;
+}
+\`\`\`
+
+### Component Patterns
+**Task Card:**
+- Checkbox (44px touch target) | Task text | Due date badge | Priority indicator
+- Swipe right = complete (celebration animation)
+- Swipe left = defer
+- Tap = show details
+
+**Smart Suggestion:**
+- AI sparkle icon | Suggestion text | "Add" CTA | Dismiss X
+- Max 1 visible at a time
+- Slide in from bottom
+
+## Performance Requirements
+- Task capture response: < 200ms
+- Dashboard load: < 1 second
+- Real-time sync latency: < 500ms
+- Offline mode: fully functional
+
+## Security
+- End-to-end encryption for task data
+- OAuth 2.0 for calendar integrations
+- SOC 2 Type II compliance
+- GDPR compliant data handling
+
+## Success Metrics
+- Task capture time < 5 seconds
+- 90% accurate date/time extraction
+- 80% user agreement with AI priorities
+- 70% reduction in app switching
+- 3+ sessions per day average
+
+## Out of Scope (MVP)
+- Team collaboration
+- Desktop native apps
+- Browser extensions
+- Complex project management (Gantt charts)
+
+---
+
+🤖 Generated with IdeaForge
+`,
+
+  cursor: `# .cursorrules - TaskFlow AI
+
+## Project Context
+AI-powered task management platform with natural language input, smart prioritization, and unified context dashboard.
+
+## Tech Stack
+- React 19 + Vite + Tailwind CSS v4
+- React Native (mobile)
+- Node.js + Express + PostgreSQL
+- Python microservices (AI/ML)
+
+## Code Style
+
+### JavaScript/React
+- Use functional components with hooks
+- Prefer const over let
+- Use async/await over promises
+- Destructure props and state
+
+\`\`\`javascript
+// ✅ Good
+const TaskCard = ({ task, onComplete }) => {
+  const [isCompleting, setIsCompleting] = useState(false);
+
+  const handleComplete = async () => {
+    setIsCompleting(true);
+    await onComplete(task.id);
+    setIsCompleting(false);
+  };
+
+  return (
+    <div className="task-card">
+      <button onClick={handleComplete}>
+        {isCompleting ? 'Completing...' : 'Complete'}
+      </button>
+    </div>
+  );
+};
+\`\`\`
+
+### State Management
+- Use Zustand for global state
+- Keep state close to where it's used
+- Avoid prop drilling - use context or Zustand
+
+### Styling
+- Use Tailwind CSS classes
+- Mobile-first responsive design
+- 44px minimum touch targets
+- Follow design tokens from design brief
+
+## File Organization
+\`\`\`
+src/
+├── components/
+│   ├── tasks/
+│   │   ├── TaskCard.jsx
+│   │   ├── TaskList.jsx
+│   │   └── QuickCapture.jsx
+│   ├── calendar/
+│   └── suggestions/
+├── stores/
+│   ├── useTaskStore.js
+│   └── useAuthStore.js
+├── services/
+│   ├── nlp.js
+│   ├── calendar.js
+│   └── api.js
+└── utils/
+\`\`\`
+
+## API Design
+- RESTful endpoints
+- Use plural nouns (/tasks, not /task)
+- Return consistent error format
+- Include request IDs for debugging
+
+\`\`\`javascript
+// ✅ Good API response
+{
+  "success": true,
+  "data": { ... },
+  "meta": {
+    "requestId": "abc123",
+    "timestamp": "2024-01-01T00:00:00Z"
+  }
+}
+
+// ✅ Good error response
+{
+  "success": false,
+  "error": {
+    "code": "TASK_NOT_FOUND",
+    "message": "Task with ID 123 not found",
+    "requestId": "abc123"
+  }
+}
+\`\`\`
+
+## Testing
+- Write tests for business logic
+- Test edge cases (empty input, offline, conflicts)
+- Mock external APIs
+- Use React Testing Library for components
+
+## Performance
+- Lazy load routes
+- Debounce search inputs
+- Use React.memo for expensive components
+- Virtualize long lists
+- Cache API responses
+
+## Accessibility
+- WCAG AAA contrast ratios
+- Full keyboard navigation
+- ARIA labels on interactive elements
+- Respect prefers-reduced-motion
+
+## Git Workflow
+- Feature branches: feature/task-quick-capture
+- Conventional commits: feat/fix/docs/refactor
+- PR template with checklist
+- Squash merge to main
+
+---
+
+Generated with IdeaForge
+`,
+
+  gemini: `# GEMINI.md - TaskFlow AI Implementation Guide
+
+## Step 1: Project Setup
+
+### Initialize the project
+1. Create React app with Vite
+2. Install dependencies:
+   - react, react-dom
+   - zustand (state management)
+   - tailwindcss (styling)
+   - react-query (data fetching)
+3. Set up folder structure
+4. Configure Tailwind CSS v4
+
+### Set up backend
+1. Initialize Node.js project
+2. Install Express, PostgreSQL client, Redis
+3. Create database schema
+4. Set up API routes
+5. Configure CORS and security middleware
+
+## Step 2: Core Feature Implementation
+
+### Feature 1: Smart Quick Capture
+
+**Step 2.1: Build the input component**
+1. Create QuickCapture.jsx component
+2. Add text input with placeholder
+3. Style with Tailwind (mobile-first)
+4. Add submit button
+
+**Step 2.2: Integrate NLP parsing**
+1. Create /api/parse endpoint
+2. Integrate OpenAI API for natural language parsing
+3. Extract: due dates, priorities, tags
+4. Return structured JSON
+
+**Step 2.3: Save task to database**
+1. Create /api/tasks POST endpoint
+2. Validate parsed data
+3. Insert into PostgreSQL
+4. Return created task with ID
+
+**Step 2.4: Update UI**
+1. Show task in list immediately (optimistic update)
+2. Display success feedback
+3. Clear input field
+4. Handle errors gracefully
+
+### Feature 2: AI Priority Assistant
+
+**Step 2.5: Build ML pipeline**
+1. Set up Python microservice (FastAPI)
+2. Create training data schema
+3. Train priority prediction model
+4. Expose /predict-priority endpoint
+
+**Step 2.6: Integrate with task creation**
+1. Call ML service when task is added
+2. Attach priority score to task
+3. Sort tasks by priority
+4. Show reasoning in UI
+
+### Feature 3: Unified Context Dashboard
+
+**Step 2.7: Calendar integration**
+1. Set up OAuth 2.0 flow (Google Calendar)
+2. Fetch today's events
+3. Create /api/calendar/events endpoint
+4. Cache events in Redis
+
+**Step 2.8: Build dashboard UI**
+1. Create Dashboard.jsx component
+2. Show calendar events (left column)
+3. Show prioritized tasks (right column)
+4. Add time block suggestions
+5. Make responsive (mobile/desktop)
+
+## Step 3: Mobile Optimization
+
+### Step 3.1: React Native setup
+1. Initialize React Native project
+2. Share business logic with web app
+3. Create native UI components
+4. Implement gesture controls
+
+### Step 3.2: Offline support
+1. Set up IndexedDB for web
+2. Implement service worker
+3. Queue offline actions
+4. Sync when online
+
+## Step 4: Polish & Launch
+
+### Step 4.1: Animations & feedback
+1. Add task completion celebration
+2. Smooth transitions
+3. Loading states
+4. Error boundaries
+
+### Step 4.2: Testing
+1. Unit tests for business logic
+2. Integration tests for API
+3. E2E tests for critical flows
+4. Manual testing on real devices
+
+### Step 4.3: Deployment
+1. Set up CI/CD pipeline
+2. Deploy backend to production
+3. Deploy frontend to CDN
+4. Configure monitoring
+
+---
+
+Generated with IdeaForge
+`,
+
+  universal: `# AGENTS.md - TaskFlow AI
+
+## Project Summary
+AI-powered task management platform with natural language input, smart prioritization, and unified context awareness. Target users are knowledge workers overwhelmed by manual task management.
+
+## Core Features
+1. **Smart Quick Capture** - Natural language task input (< 5 sec)
+2. **AI Priority Assistant** - Auto-prioritization based on ML
+3. **Unified Context Dashboard** - Calendar + tasks in one view
+4. **Proactive Suggestions** - AI-generated task suggestions
+5. **Mobile-First Design** - Touch-optimized, offline-first
+6. **Progressive UI** - Simple by default, advanced features hidden
+
+## Tech Stack
+- Frontend: React 19 + Vite, Tailwind CSS v4
+- Mobile: React Native
+- Backend: Node.js + Express, PostgreSQL, Redis
+- AI/ML: Python (FastAPI), OpenAI GPT-4
+- Real-time: WebSocket
+
+## Key Technical Requirements
+- Task capture response: < 200ms
+- Dashboard load: < 1 second
+- 90% accurate NLP parsing
+- Offline-first architecture
+- End-to-end encryption
+- WCAG AAA accessibility
+
+## Implementation Priority
+1. Smart Quick Capture (MVP, P0)
+2. AI Priority Assistant (MVP, P0)
+3. Unified Context Dashboard (MVP, P0)
+4. Mobile-First Design (MVP, P0)
+5. Proactive Suggestions (MVP, P1)
+6. Progressive UI (MVP, P1)
+
+## Design Principles
+- Reduce cognitive load
+- Mobile-first (60%+ usage)
+- Progressive complexity
+- Gestural interactions
+- Immediate feedback (< 100ms)
+
+## Success Metrics
+- Task completion rate: > 85%
+- 30-day retention: > 60%
+- 3+ sessions/day average
+- 70% reduction in app switching
+
+## Out of Scope (MVP)
+- Team collaboration
+- Desktop native apps
+- Browser extensions
+- Complex project management
+
+---
+
+Generated with IdeaForge
+`,
+  isGenerating: false,
+};
+
+export const mockStoryFiles = {
+  files: [
+    {
+      filename: 'story-001-quick-capture.md',
+      feature: 'Smart Quick Capture',
+      content: `# Story #001: Smart Quick Capture
+
+## User Story
+As a busy professional, I want to quickly capture tasks using natural language, so that I can record ideas instantly without breaking my flow.
+
+## Acceptance Criteria
+1. User can type "Buy milk tomorrow at 5pm #shopping !high"
+2. System automatically extracts:
+   - Task: "Buy milk"
+   - Due date: tomorrow at 5pm
+   - Tag: #shopping
+   - Priority: high
+3. Task appears in list within 200ms
+4. System recognizes 15+ date formats
+5. Ambiguous dates default to sensible values
+
+## Implementation Tasks
+
+### Task 1: Create QuickCapture Component
+- [ ] Create \`src/components/tasks/QuickCapture.jsx\`
+- [ ] Add text input with placeholder
+- [ ] Style with Tailwind (mobile-first, 44px touch target)
+- [ ] Add submit button with loading state
+- [ ] Clear input after successful submission
+
+### Task 2: Build NLP Parsing Service
+- [ ] Create \`/api/parse\` POST endpoint
+- [ ] Integrate OpenAI API for parsing
+- [ ] Extract due dates, priorities, tags from text
+- [ ] Return structured JSON response
+- [ ] Handle edge cases (empty input, ambiguous dates)
+
+### Task 3: Save Task to Database
+- [ ] Create \`/api/tasks\` POST endpoint
+- [ ] Validate parsed data
+- [ ] Insert into PostgreSQL \`tasks\` table
+- [ ] Return created task with ID
+- [ ] Handle duplicate tasks
+
+### Task 4: Real-time UI Updates
+- [ ] Implement optimistic update (show task immediately)
+- [ ] Show success feedback (animation)
+- [ ] Display error messages gracefully
+- [ ] Add task to list with proper sorting
+
+## Edge Cases
+- Empty input → Show helpful placeholder examples
+- Ambiguous dates ("next week") → Default to next Monday
+- Multiple time references → Use first one
+- Unrecognized text → Becomes task description
+- Offline mode → Queue for sync when online
+
+## Dependencies
+- NLP service (OpenAI API or custom model)
+- Date parsing library (date-fns or moment)
+- Real-time sync engine
+
+## Dev Notes
+- Use debounce (300ms) for live parsing preview
+- Cache frequent NLP patterns for faster response
+- Test with 100+ natural language examples
+- Monitor NLP accuracy (target: 90%)
+
+## Definition of Done
+- [ ] All acceptance criteria met
+- [ ] Unit tests written and passing
+- [ ] E2E test for full flow
+- [ ] Manual testing on mobile device
+- [ ] Performance: < 200ms response time
+- [ ] Code reviewed and merged
+`,
+    },
+    {
+      filename: 'story-002-ai-priority.md',
+      feature: 'AI Priority Assistant',
+      content: `# Story #002: AI Priority Assistant
+
+## User Story
+As a knowledge worker, I want my tasks automatically prioritized, so that I can focus on what matters without manual sorting.
+
+## Acceptance Criteria
+1. System analyzes user behavior patterns
+2. Calendar integration identifies time blocks
+3. Urgent tasks (due < 24h) auto-surface at top
+4. User can override AI suggestions
+5. AI shows explanations ("Due soon", "Matches your 9am pattern")
+
+## Implementation Tasks
+
+### Task 1: Set Up ML Pipeline
+- [ ] Create Python microservice (FastAPI)
+- [ ] Define training data schema
+- [ ] Collect initial training data (synthetic + beta users)
+- [ ] Train priority prediction model
+- [ ] Expose \`/predict-priority\` endpoint
+
+### Task 2: Calendar Integration
+- [ ] Set up OAuth 2.0 flow (Google Calendar)
+- [ ] Fetch user's calendar events
+- [ ] Identify available time blocks
+- [ ] Store calendar data in Redis (cache)
+- [ ] Handle token refresh
+
+### Task 3: Priority Scoring Algorithm
+- [ ] Calculate urgency score (based on deadline)
+- [ ] Factor in calendar availability
+- [ ] Analyze historical completion patterns
+- [ ] Combine scores into final priority
+- [ ] Generate explanation text
+
+### Task 4: UI Integration
+- [ ] Sort tasks by priority score
+- [ ] Display priority indicator (color/icon)
+- [ ] Show AI explanation on hover/tap
+- [ ] Add manual override controls
+- [ ] Track user overrides for learning
+
+## Edge Cases
+- No due date → Prioritize by creation time + patterns
+- Overdue tasks → Separate "Overdue" section
+- User consistently overrides → AI learns and adapts
+- Calendar API down → Fallback to deadline-only scoring
+
+## Dependencies
+- ML model training infrastructure
+- Calendar API integration
+- User behavior analytics
+
+## Dev Notes
+- Start with simple heuristics, evolve to ML
+- Log all priority decisions for analysis
+- A/B test algorithm changes
+- Monitor user override rate (target: < 20%)
+
+## Definition of Done
+- [ ] All acceptance criteria met
+- [ ] ML model trained and deployed
+- [ ] 80% user agreement with AI priorities
+- [ ] Explanation text is clear and helpful
+- [ ] Performance: < 500ms for priority calculation
+- [ ] Code reviewed and merged
+`,
+    },
+    {
+      filename: 'story-003-unified-dashboard.md',
+      feature: 'Unified Context Dashboard',
+      content: `# Story #003: Unified Context Dashboard
+
+## User Story
+As a user juggling multiple responsibilities, I want one dashboard showing everything I need today, so that I never miss important tasks or meetings.
+
+## Acceptance Criteria
+1. Dashboard shows calendar events and tasks side-by-side
+2. Time blocks indicate available work time
+3. Tasks are suggested for specific time blocks
+4. Quick notes section for capturing context
+5. Refreshes in real-time as data changes
+
+## Implementation Tasks
+
+### Task 1: Dashboard Layout
+- [ ] Create \`src/components/dashboard/Dashboard.jsx\`
+- [ ] Build responsive grid (mobile/tablet/desktop)
+- [ ] Left column: Calendar events
+- [ ] Right column: Prioritized tasks
+- [ ] Bottom: Quick notes section
+
+### Task 2: Calendar View
+- [ ] Fetch today's events from API
+- [ ] Display events in chronological order
+- [ ] Show event time, title, location
+- [ ] Highlight current/upcoming event
+- [ ] Handle all-day events
+
+### Task 3: Task List Integration
+- [ ] Fetch prioritized tasks
+- [ ] Group by priority/time blocks
+- [ ] Show task cards with due time
+- [ ] Enable quick complete action
+- [ ] Update in real-time
+
+### Task 4: Time Block Suggestions
+- [ ] Calculate available time between meetings
+- [ ] Match tasks to time blocks (by duration)
+- [ ] Show suggested tasks for each block
+- [ ] Allow drag-and-drop to assign tasks
+- [ ] Highlight conflicts (amber)
+
+### Task 5: Real-time Sync
+- [ ] Set up WebSocket connection
+- [ ] Subscribe to task/calendar updates
+- [ ] Update UI on remote changes
+- [ ] Handle offline/online transitions
+- [ ] Show sync status indicator
+
+## Edge Cases
+- No calendar events → Show tasks grouped by priority
+- All-day events → Don't block task suggestions
+- Conflicts (task + meeting overlap) → Highlight in amber
+- Very long event names → Truncate with ellipsis
+
+## Dependencies
+- Calendar sync service
+- Real-time sync engine (WebSocket)
+- Task prioritization service
+
+## Dev Notes
+- Use React Query for data fetching
+- Implement optimistic updates for tasks
+- Cache calendar data in Redis (TTL: 5 min)
+- Test with 50+ tasks and 20+ events
+
+## Definition of Done
+- [ ] All acceptance criteria met
+- [ ] Dashboard loads in < 1 second
+- [ ] Real-time updates work reliably
+- [ ] Mobile responsive design tested
+- [ ] 70% reduction in app switching (metric)
+- [ ] Code reviewed and merged
+`,
+    },
+  ],
+  isGenerating: false,
+};
+
 // Function to load all mock data into the store
 export function loadMockData(store) {
   const {
@@ -629,6 +1355,9 @@ export function loadMockData(store) {
     setFeatures,
     setPRD,
     setDesignBrief: setDesignBriefInStore,
+    setDesignPreferences,
+    setAgentPrompts,
+    setStoryFiles,
   } = store;
 
   // Load research
@@ -646,5 +1375,18 @@ export function loadMockData(store) {
   // Load design brief
   setDesignBriefInStore(mockDesignBrief);
 
+  // Load design preferences
+  setDesignPreferences(mockDesignPreferences);
+
+  // Load agent prompts
+  setAgentPrompts(mockAgentPrompts);
+
+  // Load story files
+  setStoryFiles(mockStoryFiles.files);
+
   console.log('✅ Mock data loaded successfully!');
+  console.log('  - Research, Insights, Features, PRD ✓');
+  console.log('  - Design Brief & Preferences ✓');
+  console.log(`  - ${Object.keys(mockAgentPrompts).filter(k => k !== 'isGenerating').length} Agent Prompts ✓`);
+  console.log(`  - ${mockStoryFiles.files.length} Story Files ✓`);
 }

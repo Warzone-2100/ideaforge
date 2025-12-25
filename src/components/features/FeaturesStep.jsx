@@ -155,7 +155,7 @@ export default function FeaturesStep() {
         <div>
           <div className="flex items-center gap-2 text-[13px] text-zinc-500 mb-2">
             <LayoutList className="w-4 h-4 text-indigo-400" />
-            Step 3 of 5
+            Step 3 of 8
           </div>
           <h1 className="text-2xl font-semibold text-zinc-100 mb-2">
             Review Features

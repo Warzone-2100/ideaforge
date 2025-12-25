@@ -25,7 +25,6 @@ export default function PRDStep() {
     setPRD,
     setPRDGenerating,
     setCurrentStep,
-    canProceedToExport,
     getAcceptedFeatures,
   } = useAppStore();
 
@@ -73,12 +72,11 @@ export default function PRDStep() {
   };
 
   const handleProceed = () => {
-    if (canProceedToExport()) {
-      setCurrentStep('export');
-    }
+    // PRD is complete, proceed to Agent Prompts step
+    setCurrentStep('prompts');
   };
 
-  const canProceed = canProceedToExport();
+  const canProceed = prd.content !== null;
 
   return (
     <div className="space-y-6">
@@ -86,7 +84,7 @@ export default function PRDStep() {
       <div>
         <div className="flex items-center gap-2 text-[13px] text-zinc-500 mb-2">
           <FileCode className="w-4 h-4 text-indigo-400" />
-          Step 4 of 5
+          Step 4 of 8
         </div>
         <h1 className="text-2xl font-semibold text-zinc-100 mb-2">
           Product Requirements Document
@@ -226,7 +224,7 @@ export default function PRDStep() {
             }
           `}
         >
-          Export Prompts
+          Continue to Agent Prompts
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>

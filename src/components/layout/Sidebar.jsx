@@ -3,6 +3,9 @@ import {
   Sparkles,
   LayoutList,
   FileCode,
+  Code,
+  Palette,
+  BookOpen,
   Download,
   Check,
   Circle,
@@ -36,9 +39,27 @@ const steps = [
     icon: FileCode,
   },
   {
+    id: 'prompts',
+    label: 'Agent Prompts',
+    description: 'Generate coding agent files',
+    icon: Code,
+  },
+  {
+    id: 'design',
+    label: 'Design Studio',
+    description: 'Create UI variations',
+    icon: Palette,
+  },
+  {
+    id: 'stories',
+    label: 'Story Files',
+    description: 'BMAD-style stories',
+    icon: BookOpen,
+  },
+  {
     id: 'export',
-    label: 'Export',
-    description: 'Get agent-ready prompts',
+    label: 'Final Export',
+    description: 'Download everything',
     icon: Download,
   },
 ];
@@ -51,9 +72,15 @@ export default function Sidebar() {
     insights,
     features,
     prd,
+    agentPrompts,
+    designVariations,
+    storyFiles,
     canProceedToAnalysis,
     canProceedToFeatures,
     canProceedToPRD,
+    canProceedToPrompts,
+    canProceedToDesign,
+    canProceedToStories,
     canProceedToExport,
   } = useAppStore();
 
@@ -65,6 +92,9 @@ export default function Sidebar() {
     if (stepId === 'analysis' && insights.isAnalyzed) return 'completed';
     if (stepId === 'features' && features.items.some((f) => f.status === 'accepted')) return 'completed';
     if (stepId === 'prd' && prd.content) return 'completed';
+    if (stepId === 'prompts' && (agentPrompts.claude || agentPrompts.cursor || agentPrompts.gemini || agentPrompts.universal)) return 'completed';
+    if (stepId === 'design' && (designVariations.designBrief || designVariations.variations?.length > 0)) return 'completed';
+    if (stepId === 'stories' && storyFiles.files?.length > 0) return 'completed';
     if (stepId === currentStep) return 'current';
     if (stepIndex < currentIndex) return 'completed';
     return 'upcoming';
@@ -80,6 +110,12 @@ export default function Sidebar() {
         return canProceedToFeatures();
       case 'prd':
         return canProceedToPRD();
+      case 'prompts':
+        return canProceedToPrompts();
+      case 'design':
+        return canProceedToDesign();
+      case 'stories':
+        return canProceedToStories();
       case 'export':
         return canProceedToExport();
       default:
@@ -165,7 +201,7 @@ export default function Sidebar() {
         <div className="flex items-center gap-2 mb-2">
           <div className="text-xs font-medium text-zinc-400">Progress</div>
           <div className="text-xs text-zinc-600">
-            {steps.filter((s) => getStepStatus(s.id) === 'completed').length}/5
+            {steps.filter((s) => getStepStatus(s.id) === 'completed').length}/8
           </div>
         </div>
         <div className="flex gap-1">

@@ -10,6 +10,15 @@ export default function Header() {
     loadMockData(store);
   };
 
+  const handleNewProject = () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to start a new project? This will clear all your current work including research, features, PRD, agent prompts, design, and story files.'
+    );
+    if (confirmed) {
+      clearResearch();
+    }
+  };
+
   const showDevTools = import.meta.env.VITE_SHOW_USAGE_STATS === 'true';
 
   return (
@@ -41,7 +50,7 @@ export default function Header() {
           )}
 
           <button
-            onClick={clearResearch}
+            onClick={handleNewProject}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px]
                      text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50
                      transition-colors"

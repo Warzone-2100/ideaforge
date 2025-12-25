@@ -4,7 +4,10 @@ import ResearchStep from './components/research/ResearchStep';
 import AnalysisStep from './components/analysis/AnalysisStep';
 import FeaturesStep from './components/features/FeaturesStep';
 import PRDStep from './components/prd/PRDStep';
-import ExportStep from './components/export/ExportStep';
+import PromptsStep from './components/prompts/PromptsStep';
+import DesignStudioStep from './components/design/DesignStudioStep';
+import StoriesStep from './components/stories/StoriesStep';
+import FinalExportStep from './components/export/FinalExportStep';
 import UsageStatsPanel from './components/usage/UsageStatsPanel';
 import useAppStore from './stores/useAppStore';
 
@@ -21,8 +24,14 @@ export default function App() {
         return <FeaturesStep />;
       case 'prd':
         return <PRDStep />;
+      case 'prompts':
+        return <PromptsStep />;
+      case 'design':
+        return <DesignStudioStep />;
+      case 'stories':
+        return <StoriesStep />;
       case 'export':
-        return <ExportStep />;
+        return <FinalExportStep />;
       default:
         return <ResearchStep />;
     }

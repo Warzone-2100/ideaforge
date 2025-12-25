@@ -24,6 +24,7 @@ export default function DesignVariationsStep() {
   } = designVariations;
 
   const [error, setError] = useState(null);
+  const [showHomepageModal, setShowHomepageModal] = useState(false);
 
   // Generate 3 variations
   const handleGenerateVariations = async () => {
@@ -227,7 +228,7 @@ export default function DesignVariationsStep() {
                   </div>
                 </div>
                 <button
-                  onClick={() => {}} // Will be handled by HomepagePreview
+                  onClick={() => setShowHomepageModal(true)}
                   className="px-6 py-3 bg-green-500 hover:bg-green-400 text-white rounded-lg font-medium transition-colors"
                 >
                   View Homepage
@@ -239,10 +240,10 @@ export default function DesignVariationsStep() {
       )}
 
       {/* Homepage Preview Modal */}
-      {homepage && (
+      {homepage && showHomepageModal && (
         <HomepagePreview
           homepage={homepage}
-          onClose={() => {}}
+          onClose={() => setShowHomepageModal(false)}
         />
       )}
     </div>

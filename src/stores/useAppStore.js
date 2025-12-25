@@ -5,7 +5,7 @@ const useAppStore = create(
   persist(
     (set, get) => ({
       // Current step in the workflow
-      currentStep: 'research', // 'research' | 'analysis' | 'features' | 'prd' | 'export'
+      currentStep: 'research', // 'research' | 'analysis' | 'features' | 'prd' | 'prompts' | 'design' | 'stories' | 'export'
 
       // Research data
       research: {
@@ -51,7 +51,15 @@ const useAppStore = create(
       // Chat messages for refinement
       chatMessages: [],
 
-      // Design Variations (NEW - Option 1)
+      // Design Preferences (Step 6 - before generating design brief)
+      designPreferences: {
+        palette: null,        // 'warm' | 'cool' | 'neutral' | 'vibrant' | { hex1, hex2, ... }
+        style: null,          // 'minimal' | 'modern' | 'playful' | 'professional' | 'bold'
+        references: [],       // ['Linear', 'Notion', 'Stripe', ...] product references
+        mood: [],             // ['calm', 'energetic', 'luxurious', ...]
+      },
+
+      // Design Variations (Step 6)
       designVariations: {
         variations: [],       // Array of 3 generated variations
         selected: null,       // Selected variation object
@@ -59,6 +67,21 @@ const useAppStore = create(
         designBrief: null,    // Stored design brief for variations
         isGenerating: false,  // Loading state for variations
         isExpanding: false,   // Loading state for expansion
+      },
+
+      // Agent Prompts (Step 5)
+      agentPrompts: {
+        claude: null,         // CLAUDE.md content
+        cursor: null,         // .cursorrules content
+        gemini: null,         // GEMINI.md content
+        universal: null,      // AGENTS.md content
+        isGenerating: false,  // Loading state
+      },
+
+      // Story Files (Step 7)
+      storyFiles: {
+        files: [],            // Array of story file objects
+        isGenerating: false,  // Loading state
       },
 
       // Usage tracking (for development/monitoring)
@@ -140,6 +163,32 @@ const useAppStore = create(
             uiGuidelines: '',
             outOfScope: '',
           },
+          isGenerating: false,
+        },
+        // Clear new steps (Agent Prompts, Design Studio, Story Files)
+        agentPrompts: {
+          claude: null,
+          cursor: null,
+          gemini: null,
+          universal: null,
+          isGenerating: false,
+        },
+        designPreferences: {
+          palette: 'cool',
+          style: 'minimal',
+          references: [],
+          mood: [],
+        },
+        designVariations: {
+          designBrief: null,
+          variations: [],
+          selected: null,
+          homepage: null,
+          isGenerating: false,
+          isExpanding: false,
+        },
+        storyFiles: {
+          files: [],
           isGenerating: false,
         },
         chatMessages: [],
@@ -260,6 +309,70 @@ const useAppStore = create(
         },
       })),
 
+      // Design Preferences actions
+      setDesignPreferences: (preferences) => set((state) => ({
+        designPreferences: { ...state.designPreferences, ...preferences },
+      })),
+
+      clearDesignPreferences: () => set({
+        designPreferences: {
+          palette: null,
+          style: null,
+          references: [],
+          mood: [],
+        },
+      }),
+
+      // Agent Prompts actions
+      setAgentPrompt: (format, content) => set((state) => ({
+        agentPrompts: {
+          ...state.agentPrompts,
+          [format]: content,
+        },
+      })),
+
+      setAgentPrompts: (prompts) => set((state) => ({
+        agentPrompts: {
+          ...state.agentPrompts,
+          ...prompts,
+          isGenerating: false,
+        },
+      })),
+
+      setGeneratingAgentPrompts: (isGenerating) => set((state) => ({
+        agentPrompts: { ...state.agentPrompts, isGenerating },
+      })),
+
+      clearAgentPrompts: () => set({
+        agentPrompts: {
+          claude: null,
+          cursor: null,
+          gemini: null,
+          universal: null,
+          isGenerating: false,
+        },
+      }),
+
+      // Story Files actions
+      setStoryFiles: (files) => set((state) => ({
+        storyFiles: {
+          ...state.storyFiles,
+          files,
+          isGenerating: false,
+        },
+      })),
+
+      setGeneratingStoryFiles: (isGenerating) => set((state) => ({
+        storyFiles: { ...state.storyFiles, isGenerating },
+      })),
+
+      clearStoryFiles: () => set({
+        storyFiles: {
+          files: [],
+          isGenerating: false,
+        },
+      }),
+
       // Usage tracking actions
       addUsageRecord: (taskName, meta) => set((state) => {
         if (!state.usageTracking.enabled || !meta) return {};
@@ -348,9 +461,24 @@ const useAppStore = create(
         return features.items.some((f) => f.status === 'accepted');
       },
 
-      canProceedToExport: () => {
+      canProceedToPrompts: () => {
         const { prd } = get();
         return prd.content || Object.values(prd.sections).some((s) => s.trim());
+      },
+
+      canProceedToDesign: () => {
+        // Can proceed to design after prompts (prompts are optional)
+        return true;
+      },
+
+      canProceedToStories: () => {
+        // Can proceed to stories after design (design is optional)
+        return true;
+      },
+
+      canProceedToExport: () => {
+        // Can always export (all previous steps optional)
+        return true;
       },
 
       // Get accepted features
@@ -367,6 +495,10 @@ const useAppStore = create(
         features: state.features,
         prd: state.prd,
         currentStep: state.currentStep,
+        designPreferences: state.designPreferences,
+        designVariations: state.designVariations,
+        agentPrompts: state.agentPrompts,
+        storyFiles: state.storyFiles,
       }),
     }
   )
