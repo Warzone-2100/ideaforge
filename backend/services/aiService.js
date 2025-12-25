@@ -3014,23 +3014,16 @@ TASK: Generate HTML/CSS/JS for a SINGLE KEY COMPONENT from the design brief.
 Focus on creating ONE visually distinctive element (like a hero section, pricing card, or feature showcase).
 
 REQUIREMENTS:
-1. **Self-contained**: All CSS inline or in a <style> tag, all JS in <script> tags
+1. **Self-contained**: All CSS in a <style> tag, all JS in <script> tags
 2. **Modern & Distinctive**: Use the exact design system from the brief (colors, typography, spacing)
 3. **Production-ready**: Clean, semantic HTML with proper accessibility
 4. **Material metaphors only**: NO artist names, NO copyrighted references
 5. **Responsive**: Mobile-first, works 320px-2560px
 6. **Interactive**: Include subtle hover effects, transitions where appropriate
 
-OUTPUT FORMAT (JSON):
-{
-  "html": "<!DOCTYPE html>...",
-  "css": "/* Component styles */",
-  "js": "// Interactive behaviors",
-  "componentType": "hero|pricing|feature|card",
-  "description": "Brief description of the design approach"
-}
-
-Return ONLY valid JSON. No markdown formatting, no explanations outside the JSON.`;
+OUTPUT FORMAT: Return a complete HTML document with inline styles and scripts.
+Start with <!DOCTYPE html> and include everything in one file.
+NO markdown formatting, NO explanations, JUST the HTML.`;
 
   const userMessage = `Design Brief:
 ${JSON.stringify(designBrief, null, 2)}
@@ -3050,39 +3043,37 @@ Create a distinctive, production-ready component that embodies this design syste
           temperature: config.temperature,
         });
 
-        // Parse JSON response
-        let parsed;
-        try {
-          // Try to extract JSON if wrapped in markdown
-          // First try: direct parse
-          try {
-            parsed = JSON.parse(content);
-          } catch {
-            // Second try: extract from markdown code blocks
-            const jsonMatch = content.match(/```json\s*(\{[\s\S]*?\})\s*```/) ||
-                             content.match(/```\s*(\{[\s\S]*?\})\s*```/) ||
-                             content.match(/(\{[\s\S]*\})/);
+        // Parse HTML response (no JSON needed!)
+        let html = content.trim();
 
-            if (jsonMatch && jsonMatch[1]) {
-              parsed = JSON.parse(jsonMatch[1]);
-            } else {
-              throw new Error('No JSON found in response');
-            }
-          }
-        } catch (parseError) {
-          console.error(`[Variation ${index + 1}] JSON parse error:`, parseError);
-          console.error(`[Variation ${index + 1}] Response preview:`, content.substring(0, 500));
-          throw new Error(`Failed to parse JSON from ${model}: ${parseError.message}`);
+        // Remove markdown code blocks if present
+        const htmlMatch = content.match(/```html\s*([\s\S]*?)\s*```/) ||
+                         content.match(/```\s*(<!DOCTYPE[\s\S]*?)\s*```/);
+
+        if (htmlMatch && htmlMatch[1]) {
+          html = htmlMatch[1].trim();
         }
+
+        // Extract CSS and JS from the HTML for separate storage (optional)
+        const cssMatch = html.match(/<style[^>]*>([\s\S]*?)<\/style>/);
+        const jsMatch = html.match(/<script[^>]*>([\s\S]*?)<\/script>/);
+
+        const css = cssMatch ? cssMatch[1].trim() : '';
+        const js = jsMatch ? jsMatch[1].trim() : '';
+
+        // Simple component type detection
+        const componentType = html.includes('hero') ? 'hero' :
+                            html.includes('pricing') ? 'pricing' :
+                            html.includes('card') ? 'card' : 'component';
 
         return {
           id: `variation-${index + 1}`,
           model,
-          html: parsed.html || '',
-          css: parsed.css || '',
-          js: parsed.js || '',
-          componentType: parsed.componentType || 'component',
-          description: parsed.description || `Variation ${index + 1}`,
+          html,
+          css,
+          js,
+          componentType,
+          description: `${model.split('/')[1]} design variation`,
           _meta: {
             model: usage.model,
             tokens: usage.totalTokens,
@@ -3157,20 +3148,13 @@ REQUIREMENTS:
 1. **Design Consistency**: Maintain exact colors, typography, spacing from the component
 2. **Responsive**: Mobile-first, works 320px-2560px
 3. **Semantic HTML**: Proper heading hierarchy, ARIA labels
-4. **Self-contained**: All CSS inline or in <style> tag, JS in <script> tags
+4. **Self-contained**: All CSS in <style> tag, JS in <script> tags
 5. **Production-ready**: No placeholders, realistic copy based on design brief
 6. **Interactive**: Smooth scrolling, FAQ toggles, mobile menu (if header included)
 
-OUTPUT FORMAT (JSON):
-{
-  "html": "<!DOCTYPE html>...",
-  "css": "/* Full homepage styles */",
-  "js": "// Interactive behaviors for all sections",
-  "sections": ["hero", "features", "how-it-works", "social-proof", "pricing", "faq", "cta", "footer"],
-  "description": "Overview of the homepage design"
-}
-
-Return ONLY valid JSON. No markdown, no explanations.`;
+OUTPUT FORMAT: Return a complete HTML document with all sections, inline styles, and scripts.
+Start with <!DOCTYPE html> and include everything in one file.
+NO markdown formatting, NO explanations, JUST the HTML.`;
 
   const userMessage = `Original Component:
 ${selectedVariation.html}
@@ -3190,38 +3174,43 @@ Expand this component into a complete, production-ready homepage with all 8 sect
     const config = MODEL_CONFIGS.expandHomepage;
     const { content, usage } = await callAIWithFallback(systemPrompt, userMessage, config);
 
-    // Parse JSON response
-    let parsed;
-    try {
-      // First try: direct parse
-      try {
-        parsed = JSON.parse(content);
-      } catch {
-        // Second try: extract from markdown code blocks
-        const jsonMatch = content.match(/```json\s*(\{[\s\S]*?\})\s*```/) ||
-                         content.match(/```\s*(\{[\s\S]*?\})\s*```/) ||
-                         content.match(/(\{[\s\S]*\})/);
+    // Parse HTML response (no JSON needed!)
+    let html = content.trim();
 
-        if (jsonMatch && jsonMatch[1]) {
-          parsed = JSON.parse(jsonMatch[1]);
-        } else {
-          throw new Error('No JSON found in response');
-        }
-      }
-    } catch (parseError) {
-      console.error('Homepage expansion JSON parse error:', parseError);
-      console.error('Response preview:', content.substring(0, 500));
-      throw new Error(`Failed to parse homepage JSON: ${parseError.message}`);
+    // Remove markdown code blocks if present
+    const htmlMatch = content.match(/```html\s*([\s\S]*?)\s*```/) ||
+                     content.match(/```\s*(<!DOCTYPE[\s\S]*?)\s*```/);
+
+    if (htmlMatch && htmlMatch[1]) {
+      html = htmlMatch[1].trim();
     }
+
+    // Extract CSS and JS from the HTML
+    const cssMatch = html.match(/<style[^>]*>([\s\S]*?)<\/style>/);
+    const jsMatch = html.match(/<script[^>]*>([\s\S]*?)<\/script>/);
+
+    const css = cssMatch ? cssMatch[1].trim() : '';
+    const js = jsMatch ? jsMatch[1].trim() : '';
+
+    // Detect sections in the HTML (simple check)
+    const sections = [];
+    if (html.includes('hero') || html.includes('Hero')) sections.push('hero');
+    if (html.includes('feature') || html.includes('Feature')) sections.push('features');
+    if (html.includes('works') || html.includes('Works')) sections.push('how-it-works');
+    if (html.includes('testimonial') || html.includes('Testimonial')) sections.push('social-proof');
+    if (html.includes('pricing') || html.includes('Pricing')) sections.push('pricing');
+    if (html.includes('faq') || html.includes('FAQ')) sections.push('faq');
+    if (html.includes('cta') || html.includes('CTA')) sections.push('cta');
+    if (html.includes('footer') || html.includes('Footer')) sections.push('footer');
 
     return {
       success: true,
       homepage: {
-        html: parsed.html || '',
-        css: parsed.css || '',
-        js: parsed.js || '',
-        sections: parsed.sections || [],
-        description: parsed.description || 'Full homepage expansion',
+        html,
+        css,
+        js,
+        sections,
+        description: 'Full homepage with 8 sections',
       },
       _meta: {
         model: usage.model,
