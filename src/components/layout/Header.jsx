@@ -1,8 +1,16 @@
-import { Lightbulb, RotateCcw } from 'lucide-react';
+import { Lightbulb, RotateCcw, Zap } from 'lucide-react';
 import useAppStore from '../../stores/useAppStore';
+import { loadMockData } from '../../utils/mockData';
 
 export default function Header() {
   const clearResearch = useAppStore((state) => state.clearResearch);
+  const store = useAppStore();
+
+  const handleLoadMockData = () => {
+    loadMockData(store);
+  };
+
+  const showDevTools = import.meta.env.VITE_SHOW_USAGE_STATS === 'true';
 
   return (
     <header className="h-14 border-b border-zinc-800/50 bg-[#09090b]/80 backdrop-blur-xl sticky top-0 z-50">
@@ -17,15 +25,31 @@ export default function Header() {
           </span>
         </div>
 
-        <button
-          onClick={clearResearch}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px]
-                   text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50
-                   transition-colors"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          New Project
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Dev Mode: Load Mock Data */}
+          {showDevTools && (
+            <button
+              onClick={handleLoadMockData}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px]
+                       bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 border border-yellow-500/20
+                       transition-colors"
+              title="Load mock data for testing (Dev mode only)"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              Load Mock Data
+            </button>
+          )}
+
+          <button
+            onClick={clearResearch}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px]
+                     text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50
+                     transition-colors"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            New Project
+          </button>
+        </div>
       </div>
     </header>
   );
