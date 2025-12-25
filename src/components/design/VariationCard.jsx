@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 export default function VariationCard({ variation, isSelected, onSelect }) {
   const [imageError, setImageError] = useState(false);
+  const [showFullPreview, setShowFullPreview] = useState(false);
 
   // Create a blob URL for the HTML content to preview in iframe
   const createPreviewURL = () => {
@@ -56,15 +57,26 @@ export default function VariationCard({ variation, isSelected, onSelect }) {
       </div>
 
       {/* Preview */}
-      <div className="aspect-video rounded-t-xl overflow-hidden bg-white">
+      <div
+        className="aspect-video rounded-t-xl overflow-hidden bg-white cursor-pointer relative group"
+        onClick={() => setShowFullPreview(true)}
+      >
         {!imageError ? (
-          <iframe
-            src={previewURL}
-            className="w-full h-full border-0 pointer-events-none"
-            sandbox="allow-same-origin allow-scripts"
-            title={`Preview of ${variation.description}`}
-            onError={() => setImageError(true)}
-          />
+          <>
+            <iframe
+              src={previewURL}
+              className="w-full h-full border-0 pointer-events-none"
+              sandbox="allow-same-origin allow-scripts"
+              title={`Preview of ${variation.description}`}
+              onError={() => setImageError(true)}
+            />
+            {/* Hover Overlay */}
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 px-4 py-2 rounded-lg">
+                <p className="text-sm font-medium text-zinc-900">Click to view full size</p>
+              </div>
+            </div>
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-zinc-800">
             <p className="text-zinc-500">Preview unavailable</p>
@@ -114,6 +126,34 @@ export default function VariationCard({ variation, isSelected, onSelect }) {
           {isSelected ? '✓ Selected' : 'Select This Style'}
         </button>
       </div>
+
+      {/* Full Preview Modal */}
+      {showFullPreview && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowFullPreview(false)}
+        >
+          <div className="relative w-full max-w-6xl h-[90vh] bg-white rounded-xl overflow-hidden shadow-2xl">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowFullPreview(false)}
+              className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Full Size Preview */}
+            <iframe
+              src={previewURL}
+              className="w-full h-full border-0"
+              sandbox="allow-same-origin allow-scripts"
+              title={`Full preview of ${variation.description}`}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
