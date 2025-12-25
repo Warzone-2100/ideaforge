@@ -3054,11 +3054,25 @@ Create a distinctive, production-ready component that embodies this design syste
         let parsed;
         try {
           // Try to extract JSON if wrapped in markdown
-          const jsonMatch = content.match(/\{[\s\S]*\}/);
-          parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+          // First try: direct parse
+          try {
+            parsed = JSON.parse(content);
+          } catch {
+            // Second try: extract from markdown code blocks
+            const jsonMatch = content.match(/```json\s*(\{[\s\S]*?\})\s*```/) ||
+                             content.match(/```\s*(\{[\s\S]*?\})\s*```/) ||
+                             content.match(/(\{[\s\S]*\})/);
+
+            if (jsonMatch && jsonMatch[1]) {
+              parsed = JSON.parse(jsonMatch[1]);
+            } else {
+              throw new Error('No JSON found in response');
+            }
+          }
         } catch (parseError) {
           console.error(`[Variation ${index + 1}] JSON parse error:`, parseError);
-          throw new Error(`Failed to parse JSON from ${model}`);
+          console.error(`[Variation ${index + 1}] Response preview:`, content.substring(0, 500));
+          throw new Error(`Failed to parse JSON from ${model}: ${parseError.message}`);
         }
 
         return {
@@ -3179,11 +3193,25 @@ Expand this component into a complete, production-ready homepage with all 8 sect
     // Parse JSON response
     let parsed;
     try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+      // First try: direct parse
+      try {
+        parsed = JSON.parse(content);
+      } catch {
+        // Second try: extract from markdown code blocks
+        const jsonMatch = content.match(/```json\s*(\{[\s\S]*?\})\s*```/) ||
+                         content.match(/```\s*(\{[\s\S]*?\})\s*```/) ||
+                         content.match(/(\{[\s\S]*\})/);
+
+        if (jsonMatch && jsonMatch[1]) {
+          parsed = JSON.parse(jsonMatch[1]);
+        } else {
+          throw new Error('No JSON found in response');
+        }
+      }
     } catch (parseError) {
       console.error('Homepage expansion JSON parse error:', parseError);
-      throw new Error('Failed to parse homepage JSON response');
+      console.error('Response preview:', content.substring(0, 500));
+      throw new Error(`Failed to parse homepage JSON: ${parseError.message}`);
     }
 
     return {

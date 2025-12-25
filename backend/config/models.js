@@ -87,7 +87,7 @@ export const MODEL_CONFIGS = {
       'anthropic/claude-4.5-haiku-20251001', // Model 2: Claude's structured approach
       'deepseek/deepseek-v3.2',             // Model 3: DeepSeek's alternative style
     ],
-    maxTokens: 4000,
+    maxTokens: 8000, // Increased from 4000 to handle larger HTML/CSS
     temperature: 0.7,
   },
 
@@ -95,7 +95,7 @@ export const MODEL_CONFIGS = {
   expandHomepage: {
     primary: 'anthropic/claude-4.5-sonnet-20250929',
     fallback: 'openai/gpt-5.2',
-    maxTokens: 12000,
+    maxTokens: 16000, // Increased from 12000 for full homepage
     temperature: 0.7,
   },
 };
