@@ -122,6 +122,15 @@ export const MODEL_CONFIGS = {
     maxTokens: 16000, // Increased from 12000 for full homepage
     temperature: 0.7,
   },
+
+  // NEW: Template screenshot analysis (VISION)
+  templateVision: {
+    primary: 'google/gemini-3-flash-preview', // Best vision quality
+    fallback: 'anthropic/claude-4.5-sonnet-20250929', // Claude vision as backup
+    maxTokens: 4000,
+    temperature: 0.5, // Lower for accurate analysis
+    supportsVision: true,
+  },
 };
 
 /**

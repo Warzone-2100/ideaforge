@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Sparkles, Palette } from 'lucide-react';
-import useAppStore from '../../stores/useAppStore';
+import { useDesignStudioAdapter } from '../../hooks/useDesignStudioAdapter';
 import { aiService } from '../../services/aiService';
 
 const EXAMPLE_MESSAGES = [
@@ -18,7 +18,7 @@ export default function DesignChatPanel() {
     addBriefChatMessage,
     setEditedDesignBrief,
     getActiveDesignBrief,
-  } = useAppStore();
+  } = useDesignStudioAdapter();
 
   // Handle old localStorage state that may not have briefChatMessages
   const briefChatMessages = designVariations?.briefChatMessages || [];

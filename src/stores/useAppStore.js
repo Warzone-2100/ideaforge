@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { getBuiltInTemplates } from '../data/templates/builtInTemplates';
 
 const useAppStore = create(
   persist(
@@ -83,6 +84,9 @@ const useAppStore = create(
         editedDesignBrief: null,  // User-refined design brief (NEW)
         isEditingBrief: false,    // Toggle for design system editor modal (NEW)
         briefChatMessages: [],    // Chat history for design system edits (NEW)
+        templateLibrary: [],  // User-uploaded template screenshots (NEW)
+        isUploadingTemplate: false, // Loading state for template upload (NEW)
+        selectedTemplateId: null, // Currently selected template ID for generation (NEW)
         sharedPreferences: {  // Shared design preferences
           palette: null,
           style: null,
@@ -426,91 +430,226 @@ const useAppStore = create(
         return designVariations.editedDesignBrief || designVariations.designBrief;
       },
 
+      // Template Library Actions (NEW)
+      addTemplateToLibrary: (template) => set((state) => ({
+        designVariations: {
+          ...state.designVariations,
+          templateLibrary: [
+            {
+              id: crypto.randomUUID(),
+              name: template.name,
+              category: template.category,
+              source: 'screenshot',
+              uploadedAt: new Date().toISOString(),
+              analysis: template.analysis,
+              thumbnail: template.thumbnail, // base64 image (compressed)
+              notes: template.notes || '',
+              cost: template.cost || 0,
+              model: template.model || 'gemini-3-flash',
+              tokens: template.tokens || 0,
+            },
+            ...state.designVariations.templateLibrary,
+          ],
+          isUploadingTemplate: false,
+        },
+      })),
+
+      removeTemplateFromLibrary: (id) => set((state) => ({
+        designVariations: {
+          ...state.designVariations,
+          templateLibrary: state.designVariations.templateLibrary.filter((t) => t.id !== id),
+        },
+      })),
+
+      setUploadingTemplate: (isUploading) => set((state) => ({
+        designVariations: {
+          ...state.designVariations,
+          isUploadingTemplate: isUploading,
+        },
+      })),
+
+      setSelectedTemplateId: (templateId) => set((state) => ({
+        designVariations: {
+          ...state.designVariations,
+          selectedTemplateId: templateId,
+        },
+      })),
+
+      getSelectedTemplate: () => {
+        const { designVariations } = get();
+        if (!designVariations.selectedTemplateId) return null;
+        // Check both user-uploaded and built-in templates
+        const allTemplates = get().getAllTemplates();
+        return allTemplates.find(t => t.id === designVariations.selectedTemplateId) || null;
+      },
+
+      // Get all templates (built-in + user-uploaded)
+      getAllTemplates: () => {
+        const { designVariations } = get();
+        const builtIn = getBuiltInTemplates();
+        const userUploaded = designVariations.templateLibrary || [];
+        // Built-in templates first, then user-uploaded
+        return [...builtIn, ...userUploaded];
+      },
+
       // Multi-Page Design Actions
       setCurrentPage: (pageId) => set((state) => ({
         designVariations: { ...state.designVariations, currentPage: pageId },
       })),
 
-      setPageVariations: (pageId, variations) => set((state) => ({
-        designVariations: {
-          ...state.designVariations,
-          pages: {
-            ...state.designVariations.pages,
-            [pageId]: {
-              ...state.designVariations.pages[pageId],
-              variations,
-              isGenerating: false,
-            },
-          },
-        },
-      })),
+      setPageVariations: (pageId, variations) => set((state) => {
+        const pages = state.designVariations?.pages || {};
+        const currentPage = pages[pageId] || {
+          variations: [],
+          selected: null,
+          fullPage: null,
+          isGenerating: false,
+          isExpanding: false,
+          overridePreferences: null,
+        };
 
-      setPageGenerating: (pageId, isGenerating) => set((state) => ({
-        designVariations: {
-          ...state.designVariations,
-          pages: {
-            ...state.designVariations.pages,
-            [pageId]: {
-              ...state.designVariations.pages[pageId],
-              isGenerating,
+        return {
+          designVariations: {
+            ...state.designVariations,
+            pages: {
+              ...pages,
+              [pageId]: {
+                ...currentPage,
+                variations,
+                isGenerating: false,
+              },
             },
           },
-        },
-      })),
+        };
+      }),
 
-      selectPageVariation: (pageId, variation) => set((state) => ({
-        designVariations: {
-          ...state.designVariations,
-          pages: {
-            ...state.designVariations.pages,
-            [pageId]: {
-              ...state.designVariations.pages[pageId],
-              selected: variation,
-              fullPage: null, // Clear full page when selecting new variation
-            },
-          },
-        },
-      })),
+      setPageGenerating: (pageId, isGenerating) => set((state) => {
+        // Ensure pages structure exists
+        const pages = state.designVariations?.pages || {};
+        const currentPage = pages[pageId] || {
+          variations: [],
+          selected: null,
+          fullPage: null,
+          isGenerating: false,
+          isExpanding: false,
+          overridePreferences: null,
+        };
 
-      setPageFullPage: (pageId, fullPage) => set((state) => ({
-        designVariations: {
-          ...state.designVariations,
-          pages: {
-            ...state.designVariations.pages,
-            [pageId]: {
-              ...state.designVariations.pages[pageId],
-              fullPage,
-              isExpanding: false,
+        return {
+          designVariations: {
+            ...state.designVariations,
+            pages: {
+              ...pages,
+              [pageId]: {
+                ...currentPage,
+                isGenerating,
+              },
             },
           },
-        },
-      })),
+        };
+      }),
 
-      setPageExpanding: (pageId, isExpanding) => set((state) => ({
-        designVariations: {
-          ...state.designVariations,
-          pages: {
-            ...state.designVariations.pages,
-            [pageId]: {
-              ...state.designVariations.pages[pageId],
-              isExpanding,
-            },
-          },
-        },
-      })),
+      selectPageVariation: (pageId, variation) => set((state) => {
+        const pages = state.designVariations?.pages || {};
+        const currentPage = pages[pageId] || {
+          variations: [],
+          selected: null,
+          fullPage: null,
+          isGenerating: false,
+          isExpanding: false,
+          overridePreferences: null,
+        };
 
-      setPageOverridePreferences: (pageId, preferences) => set((state) => ({
-        designVariations: {
-          ...state.designVariations,
-          pages: {
-            ...state.designVariations.pages,
-            [pageId]: {
-              ...state.designVariations.pages[pageId],
-              overridePreferences: preferences,
+        return {
+          designVariations: {
+            ...state.designVariations,
+            pages: {
+              ...pages,
+              [pageId]: {
+                ...currentPage,
+                selected: variation,
+                fullPage: null, // Clear full page when selecting new variation
+              },
             },
           },
-        },
-      })),
+        };
+      }),
+
+      setPageFullPage: (pageId, fullPage) => set((state) => {
+        const pages = state.designVariations?.pages || {};
+        const currentPage = pages[pageId] || {
+          variations: [],
+          selected: null,
+          fullPage: null,
+          isGenerating: false,
+          isExpanding: false,
+          overridePreferences: null,
+        };
+
+        return {
+          designVariations: {
+            ...state.designVariations,
+            pages: {
+              ...pages,
+              [pageId]: {
+                ...currentPage,
+                fullPage,
+                isExpanding: false,
+              },
+            },
+          },
+        };
+      }),
+
+      setPageExpanding: (pageId, isExpanding) => set((state) => {
+        const pages = state.designVariations?.pages || {};
+        const currentPage = pages[pageId] || {
+          variations: [],
+          selected: null,
+          fullPage: null,
+          isGenerating: false,
+          isExpanding: false,
+          overridePreferences: null,
+        };
+
+        return {
+          designVariations: {
+            ...state.designVariations,
+            pages: {
+              ...pages,
+              [pageId]: {
+                ...currentPage,
+                isExpanding,
+              },
+            },
+          },
+        };
+      }),
+
+      setPageOverridePreferences: (pageId, preferences) => set((state) => {
+        const pages = state.designVariations?.pages || {};
+        const currentPage = pages[pageId] || {
+          variations: [],
+          selected: null,
+          fullPage: null,
+          isGenerating: false,
+          isExpanding: false,
+          overridePreferences: null,
+        };
+
+        return {
+          designVariations: {
+            ...state.designVariations,
+            pages: {
+              ...pages,
+              [pageId]: {
+                ...currentPage,
+                overridePreferences: preferences,
+              },
+            },
+          },
+        };
+      }),
 
       setSharedPreferences: (preferences) => set((state) => ({
         designVariations: {
@@ -628,6 +767,9 @@ const useAppStore = create(
           editedDesignBrief: null,  // NEW
           isEditingBrief: false,     // NEW
           briefChatMessages: [],      // NEW
+          templateLibrary: [],        // NEW
+          isUploadingTemplate: false, // NEW
+          selectedTemplateId: null,   // NEW
           isGenerating: false,
           isExpanding: false,
           sharedPreferences: {
@@ -889,6 +1031,9 @@ const useAppStore = create(
             editedDesignBrief: null,  // NEW
             isEditingBrief: false,     // NEW
             briefChatMessages: [],      // NEW
+            templateLibrary: [],        // NEW
+            isUploadingTemplate: false, // NEW
+            selectedTemplateId: null,   // NEW
             sharedPreferences: {
               palette: null,
               style: null,

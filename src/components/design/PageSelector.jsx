@@ -1,5 +1,5 @@
 import { Home, LayoutDashboard, Settings, User, Check, Circle } from 'lucide-react';
-import useAppStore from '../../stores/useAppStore';
+import { useDesignStudioAdapter } from '../../hooks/useDesignStudioAdapter';
 
 const iconMap = {
   Home,
@@ -16,7 +16,7 @@ const defaultPageTypes = [
 ];
 
 export default function PageSelector() {
-  const { designVariations, setCurrentPage } = useAppStore();
+  const { designVariations, setCurrentPage } = useDesignStudioAdapter();
 
   // Handle old localStorage state that may not have the new structure
   const currentPage = designVariations?.currentPage || 'landing';

@@ -1,64 +1,43 @@
-import Header from './components/layout/Header';
-import Sidebar from './components/layout/Sidebar';
-import ResearchStep from './components/research/ResearchStep';
-import AnalysisStep from './components/analysis/AnalysisStep';
-import FeaturesStep from './components/features/FeaturesStep';
-import PRDStep from './components/prd/PRDStep';
-import PromptsStep from './components/prompts/PromptsStep';
-import DesignStudioStep from './components/design/DesignStudioStep';
-import StoriesStep from './components/stories/StoriesStep';
-import FinalExportStep from './components/export/FinalExportStep';
-import UsageStatsPanel from './components/usage/UsageStatsPanel';
-import useAppStore from './stores/useAppStore';
+import { lazy, Suspense } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import MainFlow from './components/MainFlow';
 
-export default function App() {
-  const currentStep = useAppStore((state) => state.currentStep);
+// Lazy load Design Studio for better initial load performance
+const DesignStudioPage = lazy(() => import('./pages/DesignStudioPage'));
 
-  const renderStep = () => {
-    switch (currentStep) {
-      case 'research':
-        return <ResearchStep />;
-      case 'analysis':
-        return <AnalysisStep />;
-      case 'features':
-        return <FeaturesStep />;
-      case 'prd':
-        return <PRDStep />;
-      case 'prompts':
-        return <PromptsStep />;
-      case 'design':
-        return <DesignStudioStep />;
-      case 'stories':
-        return <StoriesStep />;
-      case 'export':
-        return <FinalExportStep />;
-      default:
-        return <ResearchStep />;
-    }
-  };
-
+/**
+ * Loading fallback for lazy-loaded routes
+ */
+function LoadingFallback() {
   return (
-    <div className="min-h-screen bg-[#09090b] flex flex-col">
-      {/* Subtle gradient orbs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-indigo-500/[0.03] rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-violet-500/[0.03] rounded-full blur-[100px]" />
+    <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-zinc-500 text-sm">Loading Design Studio...</p>
       </div>
-
-      <Header />
-
-      <div className="flex-1 flex relative z-10">
-        <Sidebar />
-
-        <main className="flex-1 overflow-auto">
-          <div className="max-w-5xl mx-auto p-8">
-            {renderStep()}
-          </div>
-        </main>
-      </div>
-
-      {/* Usage Stats Panel (dev mode only) */}
-      {import.meta.env.VITE_SHOW_USAGE_STATS === 'true' && <UsageStatsPanel />}
     </div>
+  );
+}
+
+/**
+ * App - Root component with routing
+ *
+ * Routes:
+ * - / : Main flow (Research → Analysis → Features → PRD → Prompts → Stories → Export)
+ * - /design-studio : Standalone Design Studio
+ */
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<MainFlow />} />
+      <Route
+        path="/design-studio"
+        element={
+          <Suspense fallback={<LoadingFallback />}>
+            <DesignStudioPage />
+          </Suspense>
+        }
+      />
+    </Routes>
   );
 }

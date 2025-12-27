@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Save, RotateCcw, Palette, Loader2, Sparkles } from 'lucide-react';
-import useAppStore from '../../stores/useAppStore';
+import { useDesignStudioAdapter } from '../../hooks/useDesignStudioAdapter';
 import { aiService } from '../../services/aiService';
 import DesignChatPanel from './DesignChatPanel';
 import ColorTokenEditor from './ColorTokenEditor';
@@ -14,7 +14,7 @@ export default function DesignSystemEditor() {
     setEditedDesignBrief,
     resetEditedBrief,
     getActiveDesignBrief,
-  } = useAppStore();
+  } = useDesignStudioAdapter();
 
   const { isEditingBrief, editedDesignBrief, designBrief } = designVariations;
   const activeDesignBrief = getActiveDesignBrief();

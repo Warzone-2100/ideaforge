@@ -940,6 +940,98 @@ ${(f.edgeCases || ['Handle empty state', 'Handle loading state', 'Handle error s
       throw error;
     }
   }
+
+  // ============================================================================
+  // TEMPLATE ANALYSIS - Upload & analyze design screenshots
+  // ============================================================================
+  async analyzeTemplate(imageBase64, name, category, notes = '') {
+    try {
+      const response = await fetch(`${API_BASE_URL}/templates/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image: imageBase64,
+          notes,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Analysis failed');
+      }
+
+      // Track usage
+      if (data.cost && data.tokens) {
+        trackUsage('templateVision', {
+          model: data.model || 'gemini-3-flash',
+          tokens: data.tokens,
+          cost: data.cost,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      return {
+        ...data,
+        name,
+        category,
+        thumbnail: imageBase64, // Will be compressed by UI component
+      };
+    } catch (error) {
+      console.error('Template analysis error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to analyze template',
+      };
+    }
+  }
+
+  // ============================================================================
+  // GENERATE FROM TEMPLATE - Create design using template structure
+  // ============================================================================
+  async generateFromTemplate(templateId, template, designBrief, pageType = 'dashboard') {
+    try {
+      const response = await fetch(`${API_BASE_URL}/templates/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateId,
+          template,
+          designBrief,
+          pageType,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to generate from template');
+      }
+
+      // Track usage
+      if (data._meta) {
+        trackUsage('expandHomepage', data); // Reuse expandHomepage tracking
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Template generation error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to generate from template',
+      };
+    }
+  }
 }
 
 export const aiService = new AIService();

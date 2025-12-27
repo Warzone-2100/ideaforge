@@ -1,23 +1,21 @@
 import { useState, useEffect } from 'react';
 import {
-  ArrowLeft,
-  ChevronRight,
   Palette,
   Sparkles,
-  RefreshCw,
   Loader2,
   AlertCircle,
-  Check,
   Download,
-  Eye,
   Edit,
 } from 'lucide-react';
-import useAppStore from '../../stores/useAppStore';
+import { useDesignStudioAdapter } from '../../hooks/useDesignStudioAdapter';
+import useDesignStudioStore from '../../stores/useDesignStudioStore';
 import { aiService } from '../../services/aiService';
 import DesignVariationsStep from './DesignVariationsStep';
 import HomepagePreview from './HomepagePreview';
 import PageSelector from './PageSelector';
 import DesignSystemEditor from './DesignSystemEditor';
+import TemplateLibraryGrid from './TemplateLibraryGrid';
+import TemplateUploadModal from './TemplateUploadModal';
 
 const paletteOptions = [
   { id: 'warm', label: 'Warm', description: 'Oranges, reds, yellows', colors: ['#FF6B6B', '#FFD93D', '#FFA500'] },
@@ -61,7 +59,13 @@ export default function DesignStudioStep() {
     setSharedPreferences,
     getEffectivePreferences,
     toggleBriefEditor,
-  } = useAppStore();
+    addTemplateToLibrary,
+    removeTemplateFromLibrary,
+    setUploadingTemplate,
+    setSelectedTemplateId,
+    getSelectedTemplate,
+    getAllTemplates,
+  } = useDesignStudioAdapter();
 
   // Handle both old and new state structures (for localStorage migration)
   const currentPage = designVariations?.currentPage || 'landing';
@@ -93,6 +97,10 @@ export default function DesignStudioStep() {
   const [error, setError] = useState(null);
   const [showPreferences, setShowPreferences] = useState(!designVariations.designBrief);
   const [showVariations, setShowVariations] = useState(!!designVariations.designBrief);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+
+  // Get selected template from store
+  const selectedTemplate = getSelectedTemplate();
 
   const handlePaletteSelect = (paletteId) => {
     setSelectedPalette(paletteId);
@@ -165,34 +173,14 @@ export default function DesignStudioStep() {
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <button
-            onClick={() => setCurrentStep('prompts')}
-            className="flex items-center gap-2 text-zinc-400 hover:text-white mb-4 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Agent Prompts
-          </button>
-
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 text-[13px] text-zinc-500 mb-2">
-                <Sparkles className="w-4 h-4 text-indigo-400" />
-                Step 6 of 8
-              </div>
-              <h1 className="text-3xl font-bold text-white mb-2">Design Studio</h1>
-              <p className="text-zinc-400">
-                Configure your design preferences, generate variations, and create a full homepage
-              </p>
-            </div>
-
-            <button
-              onClick={() => setCurrentStep('stories')}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg transition-colors"
-            >
-              Continue to Stories
-              <ChevronRight className="w-4 h-4" />
-            </button>
+          <div className="flex items-center gap-2 text-[13px] text-zinc-500 mb-2">
+            <Sparkles className="w-4 h-4 text-violet-400" />
+            Design Preferences & Generation
           </div>
+          <h1 className="text-3xl font-bold text-white mb-2">Design Studio</h1>
+          <p className="text-zinc-400">
+            Configure your design preferences, generate variations, and create a full homepage
+          </p>
         </div>
 
         {/* Error */}
@@ -210,6 +198,30 @@ export default function DesignStudioStep() {
         {designVariations.designBrief && (
           <PageSelector />
         )}
+
+        {/* Template Library */}
+        <div className="mb-8">
+          <TemplateLibraryGrid
+            templates={getAllTemplates()}
+            selectedTemplate={selectedTemplate}
+            onSelectTemplate={(template) => setSelectedTemplateId(template?.id || null)}
+            onDeleteTemplate={(id) => {
+              // Only allow deleting user-uploaded templates, not built-ins
+              const template = getAllTemplates().find(t => t.id === id);
+              if (template?.source === 'built-in') {
+                alert('Cannot delete built-in templates');
+                return;
+              }
+              if (confirm('Delete this template? This cannot be undone.')) {
+                removeTemplateFromLibrary(id);
+                if (selectedTemplate?.id === id) {
+                  setSelectedTemplateId(null);
+                }
+              }
+            }}
+            onUploadClick={() => setShowUploadModal(true)}
+          />
+        </div>
 
         {/* Design Preferences Form */}
         {showPreferences && (
@@ -553,6 +565,25 @@ export default function DesignStudioStep() {
 
       {/* Design System Editor Modal */}
       {designVariations.isEditingBrief && <DesignSystemEditor />}
+
+      {/* Template Upload Modal */}
+      <TemplateUploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onUploadSuccess={(template) => {
+          addTemplateToLibrary(template);
+          setShowUploadModal(false);
+          // Auto-select the newly uploaded template
+          // The template gets an ID when added to library, so we need to get it from there
+          setTimeout(() => {
+            const templates = useDesignStudioStore.getState().customTemplates;
+            const newTemplate = templates[0]; // Most recent is first
+            if (newTemplate) {
+              setSelectedTemplateId(newTemplate.id);
+            }
+          }, 100);
+        }}
+      />
     </div>
   );
 }

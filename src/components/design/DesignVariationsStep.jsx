@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import useAppStore from '../../stores/useAppStore';
+import { useDesignStudioAdapter } from '../../hooks/useDesignStudioAdapter';
 import { aiService } from '../../services/aiService';
 import VariationCard from './VariationCard';
 import HomepagePreview from './HomepagePreview';
@@ -18,7 +18,9 @@ export default function DesignVariationsStep() {
     setPageExpanding,
     setPageFullPage,
     getEffectivePreferences,
-  } = useAppStore();
+    getSelectedTemplate,
+    setSelectedTemplateId,
+  } = useDesignStudioAdapter();
 
   // Handle old localStorage state that may not have the new structure
   const currentPage = designVariations?.currentPage || 'landing';
@@ -57,7 +59,11 @@ export default function DesignVariationsStep() {
   const [error, setError] = useState(null);
   const [showHomepageModal, setShowHomepageModal] = useState(false);
 
-  // Generate 3 variations for current page
+  // Get selected template
+  const selectedTemplate = getSelectedTemplate();
+  const templateLibrary = designVariations?.templateLibrary || [];
+
+  // Generate variations (from scratch or from template)
   const handleGenerateVariations = async () => {
     if (!activeDesignBrief) {
       setError('No design brief available. Please generate a design brief first.');
@@ -68,13 +74,37 @@ export default function DesignVariationsStep() {
     setPageGenerating(currentPage, true);
 
     try {
-      // Use edited design brief if available, otherwise use AI-generated brief
-      const result = await aiService.generateDesignVariations(activeDesignBrief, currentPage);
+      // If template is selected, generate from template instead of from scratch
+      if (selectedTemplate) {
+        console.log(`[TEMPLATE] Generating from template: ${selectedTemplate.name}`);
+        const result = await aiService.generateFromTemplate(
+          selectedTemplate.id,
+          selectedTemplate,
+          activeDesignBrief,
+          currentPage
+        );
 
-      if (result.success && result.variations) {
-        setPageVariations(currentPage, result.variations);
+        if (result.success && result.html) {
+          // Wrap single template result in variations format
+          setPageVariations(currentPage, [{
+            id: crypto.randomUUID(),
+            html: result.html,
+            model: result.model || 'template-based',
+            cost: result.cost || 0,
+            templateUsed: selectedTemplate.name,
+          }]);
+        } else {
+          throw new Error(result.error || 'Failed to generate from template');
+        }
       } else {
-        throw new Error('Failed to generate variations');
+        // Generate 3 variations from scratch
+        const result = await aiService.generateDesignVariations(activeDesignBrief, currentPage);
+
+        if (result.success && result.variations) {
+          setPageVariations(currentPage, result.variations);
+        } else {
+          throw new Error('Failed to generate variations');
+        }
       }
     } catch (err) {
       console.error('Variation generation error:', err);
@@ -137,6 +167,47 @@ export default function DesignVariationsStep() {
         </div>
       )}
 
+      {/* Template Selector */}
+      {templateLibrary.length > 0 && variations.length === 0 && !isGenerating && (
+        <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-white mb-1">Generation Mode</h3>
+              <p className="text-xs text-zinc-400">
+                Generate from scratch or use a template structure
+              </p>
+            </div>
+            <select
+              value={selectedTemplate?.id || ''}
+              onChange={(e) => setSelectedTemplateId(e.target.value || null)}
+              className="px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+            >
+              <option value="">From scratch (3 variations)</option>
+              {templateLibrary.map(t => (
+                <option key={t.id} value={t.id}>
+                  Template: {t.name} ({t.category})
+                </option>
+              ))}
+            </select>
+          </div>
+          {selectedTemplate && (
+            <div className="mt-4 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-indigo-400 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1 text-sm">
+                  <p className="text-indigo-300 font-medium">Template-Based Generation</p>
+                  <p className="text-indigo-400/80 mt-1">
+                    Will use "{selectedTemplate.name}" structure with your design tokens. Cost: ~$0.08
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Generate Variations Button */}
       {variations.length === 0 && !isGenerating && (
         <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-8 text-center">
@@ -147,11 +218,14 @@ export default function DesignVariationsStep() {
               </svg>
             </div>
             <h3 className="text-xl font-semibold text-white">
-              Ready to Generate {currentPageType?.label} Variations
+              Ready to Generate {currentPageType?.label} {selectedTemplate ? 'from Template' : 'Variations'}
             </h3>
             <p className="text-zinc-400">
-              We'll use 3 different AI models to create unique {currentPageType?.label.toLowerCase()} designs
-              based on your design brief. Each variation will have a distinct style and approach.
+              {selectedTemplate ? (
+                `Generate using "${selectedTemplate.name}" structure with your brand's design tokens.`
+              ) : (
+                `We'll use 3 different AI models to create unique ${currentPageType?.label.toLowerCase()} designs based on your design brief.`
+              )}
             </p>
             <button
               onClick={handleGenerateVariations}
@@ -161,7 +235,7 @@ export default function DesignVariationsStep() {
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              Generate 3 {currentPageType?.label} Variations
+              {selectedTemplate ? `Generate from "${selectedTemplate.name}"` : `Generate 3 ${currentPageType?.label} Variations`}
             </button>
             {!designBrief && (
               <p className="text-sm text-red-400">Please generate a design brief first</p>

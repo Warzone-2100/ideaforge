@@ -1,4 +1,5 @@
-import { Lightbulb, RotateCcw, Zap } from 'lucide-react';
+import { Lightbulb, RotateCcw, Zap, Palette } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import useAppStore from '../../stores/useAppStore';
 import { loadMockData } from '../../utils/mockData';
 
@@ -35,6 +36,17 @@ export default function Header() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Design Studio Link */}
+          <Link
+            to="/design-studio"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px]
+                     bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 border border-violet-500/20
+                     transition-colors"
+          >
+            <Palette className="w-3.5 h-3.5" />
+            Design Studio
+          </Link>
+
           {/* Dev Mode: Load Mock Data */}
           {showDevTools && (
             <button

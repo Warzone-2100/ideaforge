@@ -9,8 +9,10 @@ import {
   Download,
   Check,
   Circle,
-  ChevronRight
+  ChevronRight,
+  ExternalLink
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import useAppStore from '../../stores/useAppStore';
 
 const steps = [
@@ -45,12 +47,6 @@ const steps = [
     icon: Code,
   },
   {
-    id: 'design',
-    label: 'Design Studio',
-    description: 'Create UI variations',
-    icon: Palette,
-  },
-  {
     id: 'stories',
     label: 'Story Files',
     description: 'BMAD-style stories',
@@ -73,13 +69,11 @@ export default function Sidebar() {
     features,
     prd,
     agentPrompts,
-    designVariations,
     storyFiles,
     canProceedToAnalysis,
     canProceedToFeatures,
     canProceedToPRD,
     canProceedToPrompts,
-    canProceedToDesign,
     canProceedToStories,
     canProceedToExport,
   } = useAppStore();
@@ -93,7 +87,6 @@ export default function Sidebar() {
     if (stepId === 'features' && features.items.some((f) => f.status === 'accepted')) return 'completed';
     if (stepId === 'prd' && prd.content) return 'completed';
     if (stepId === 'prompts' && (agentPrompts.claude || agentPrompts.cursor || agentPrompts.gemini || agentPrompts.universal)) return 'completed';
-    if (stepId === 'design' && (designVariations.designBrief || designVariations.variations?.length > 0)) return 'completed';
     if (stepId === 'stories' && storyFiles.files?.length > 0) return 'completed';
     if (stepId === currentStep) return 'current';
     if (stepIndex < currentIndex) return 'completed';
@@ -112,8 +105,6 @@ export default function Sidebar() {
         return canProceedToPRD();
       case 'prompts':
         return canProceedToPrompts();
-      case 'design':
-        return canProceedToDesign();
       case 'stories':
         return canProceedToStories();
       case 'export':
@@ -196,12 +187,38 @@ export default function Sidebar() {
         </nav>
       </div>
 
+      {/* Design Studio Link */}
+      <div className="p-4 border-t border-zinc-800/50">
+        <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
+          Tools
+        </h2>
+        <Link
+          to="/design-studio"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left
+                   bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20
+                   transition-all duration-200 group"
+        >
+          <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+            <Palette className="w-4 h-4 text-violet-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-medium text-violet-300">
+              Design Studio
+            </div>
+            <div className="text-[11px] text-zinc-500 truncate">
+              Create UI variations
+            </div>
+          </div>
+          <ExternalLink className="w-4 h-4 text-violet-400 flex-shrink-0" />
+        </Link>
+      </div>
+
       {/* Progress indicator */}
       <div className="mt-auto p-4 border-t border-zinc-800/50">
         <div className="flex items-center gap-2 mb-2">
           <div className="text-xs font-medium text-zinc-400">Progress</div>
           <div className="text-xs text-zinc-600">
-            {steps.filter((s) => getStepStatus(s.id) === 'completed').length}/8
+            {steps.filter((s) => getStepStatus(s.id) === 'completed').length}/{steps.length}
           </div>
         </div>
         <div className="flex gap-1">

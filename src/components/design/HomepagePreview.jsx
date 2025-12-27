@@ -28,6 +28,31 @@ export default function HomepagePreview({ homepage, onClose }) {
 
   const [previewURL] = useState(createPreviewURL());
 
+  // Open in new tab
+  const handleOpenInNewTab = () => {
+    const fullHTML = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IdeaForge Homepage</title>
+  <style>
+${homepage.css || ''}
+  </style>
+</head>
+<body>
+${homepage.html || ''}
+  <script>
+${homepage.js || ''}
+  </script>
+</body>
+</html>`;
+
+    const blob = new Blob([fullHTML], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  };
+
   // Download as ZIP (for now, just download HTML)
   const handleDownload = () => {
     const fullHTML = `<!DOCTYPE html>
@@ -110,8 +135,17 @@ ${homepage.html || ''}
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={handleOpenInNewTab}
+              className="px-4 py-2 bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              Open in New Tab
+            </button>
+            <button
               onClick={handleCopy}
-              className="px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg transition-colors text-sm font-medium"
+              className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-colors text-sm font-medium"
             >
               {copied ? '✓ Copied!' : 'Copy Code'}
             </button>

@@ -1838,6 +1838,272 @@ Respond ONLY with a complete JSON design brief that has been FULLY UPDATED to re
 }
 
 // ============================================================================
+// TEMPLATE INSPIRATION - Screenshot analysis and generation
+// ============================================================================
+
+// Vision-capable AI call for image analysis
+async function callOpenRouterVision(systemPrompt, userMessage, imageBase64, config) {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENROUTER_API_KEY is not set in .env');
+  }
+
+  const model = config.primary;
+  const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
+
+  // Build messages with image content
+  const messages = [
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: systemPrompt + '\n\n' + userMessage
+        },
+        {
+          type: 'image_url',
+          image_url: {
+            url: imageBase64, // Should be data:image/jpeg;base64,... format
+            detail: 'high' // High detail for better analysis
+          }
+        }
+      ]
+    }
+  ];
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://ideaforge.app',
+      'X-Title': 'IdeaForge',
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      max_tokens: config.maxTokens || 4000,
+      temperature: config.temperature ?? 0.5,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(`OpenRouter Vision API error: ${data.error?.message || response.statusText}`);
+  }
+
+  const content = data.choices[0].message.content;
+  const usage = data.usage || {};
+
+  // Calculate cost
+  const cost = calculateCost(
+    model,
+    usage.prompt_tokens || 0,
+    usage.completion_tokens || 0
+  );
+
+  console.log(`[AI] ✓ ${model} (vision)`);
+  console.log(`[AI]   Input: ${usage.prompt_tokens || 0} tokens (${formatCost(cost.input)}) | Output: ${usage.completion_tokens || 0} tokens (${formatCost(cost.output)}) | Total: ${formatCost(cost.total)}`);
+
+  return {
+    content,
+    usage: {
+      model,
+      promptTokens: usage.prompt_tokens || 0,
+      completionTokens: usage.completion_tokens || 0,
+      totalTokens: usage.total_tokens || 0,
+      cost,
+    },
+  };
+}
+
+// Analyze design screenshot with Gemini Flash 3 vision
+export async function analyzeDesignScreenshot(imageBase64, userNotes = '') {
+  const systemPrompt = `You are a senior UI/UX designer analyzing a design screenshot.
+
+Extract the following information and return ONLY valid JSON (no markdown, no code blocks, just pure JSON):
+
+{
+  "layout": "Describe layout structure (e.g., 'sidebar-left + top-nav + 3-column-grid')",
+  "components": ["List component types", "e.g. metric cards", "data table", "line chart", "navigation menu"],
+  "colorPalette": {
+    "primary": "#HEX",
+    "secondary": "#HEX",
+    "accent": "#HEX",
+    "background": "#HEX",
+    "text": "#HEX"
+  },
+  "typography": {
+    "style": "Sans-serif / Serif / Monospace",
+    "weight": "Light / Regular / Medium / Bold",
+    "feel": "Modern, clean, professional"
+  },
+  "spacing": "Compact / Balanced / Generous",
+  "mood": "Professional / Playful / Minimal / Bold / Elegant / Data-dense / Creative",
+  "patterns": ["List UI patterns", "e.g. Hover lift effect", "Icon buttons", "Rounded corners", "Card shadows"],
+  "category": "dashboard / landing / settings / admin / ecommerce / portfolio / blog",
+  "referenceProducts": ["Similar to...", "e.g. Linear", "Stripe", "Notion", "Figma"],
+  "gridSystem": "12-column / Flexbox / CSS Grid / Custom",
+  "responsiveness": "Desktop-first / Mobile-first / Responsive"
+}
+
+Be specific and detailed. Extract exact hex colors from the image if visible. Identify all major components.`;
+
+  const userMessage = userNotes
+    ? `User notes about this design: "${userNotes}"\n\nAnalyze this UI design screenshot in detail.`
+    : 'Analyze this UI design screenshot in detail. Be specific about layout, colors, and components.';
+
+  try {
+    const config = MODEL_CONFIGS.templateVision; // Gemini 3 Flash with vision
+    console.log(`[AI] Calling vision model: ${config.primary}`);
+
+    const { content, usage } = await callOpenRouterVision(systemPrompt, userMessage, imageBase64, config);
+
+    // Parse JSON response
+    let analysis;
+    try {
+      // Try to extract JSON from various formats
+      let jsonString = content.trim();
+
+      // Remove markdown code blocks if present
+      const jsonMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/) || content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonString = jsonMatch[1] || jsonMatch[0];
+      }
+
+      analysis = JSON.parse(jsonString);
+    } catch (parseError) {
+      console.error('Failed to parse vision analysis:', parseError);
+      console.error('Raw content:', content);
+      return {
+        success: false,
+        error: 'Failed to parse design analysis. AI did not return valid JSON.',
+        rawResponse: content
+      };
+    }
+
+    return {
+      success: true,
+      analysis,
+      cost: usage.cost.total,
+      model: usage.model,
+      tokens: usage.totalTokens
+    };
+  } catch (error) {
+    console.error('Vision analysis error:', error);
+
+    // Try fallback model (Claude vision) if Gemini fails
+    if (error.message.includes('terminated') || error.message.includes('failed') || error.message.includes('timeout')) {
+      console.log('[AI] Primary vision model failed, trying fallback...');
+      try {
+        const fallbackConfig = {
+          ...MODEL_CONFIGS.templateVision,
+          primary: MODEL_CONFIGS.templateVision.fallback
+        };
+        const { content, usage } = await callOpenRouterVision(systemPrompt, userMessage, imageBase64, fallbackConfig);
+
+        let analysis;
+        let jsonString = content.trim();
+        const jsonMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/) || content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          jsonString = jsonMatch[1] || jsonMatch[0];
+        }
+        analysis = JSON.parse(jsonString);
+
+        return {
+          success: true,
+          analysis,
+          cost: usage.cost.total,
+          model: usage.model + ' (fallback)',
+          tokens: usage.totalTokens
+        };
+      } catch (fallbackError) {
+        console.error('Fallback vision model also failed:', fallbackError);
+        throw new Error('Both primary and fallback vision models failed: ' + fallbackError.message);
+      }
+    }
+
+    throw error;
+  }
+}
+
+// ============================================================================
+// GENERATE FROM TEMPLATE - Apply user's design tokens to template structure
+// ============================================================================
+export async function generateFromTemplate(templateAnalysis, designBrief, pageType = 'dashboard') {
+  console.log(`[TEMPLATE] Generating ${pageType} from template structure`);
+
+  const systemPrompt = `You are generating a ${pageType} UI based on a template structure analysis.
+
+TEMPLATE STRUCTURE TO FOLLOW:
+${JSON.stringify(templateAnalysis, null, 2)}
+
+USER'S DESIGN BRIEF (apply these tokens):
+- Primary Color: ${designBrief.designTokens?.colors?.primary?.value || '#6366F1'}
+- Secondary Color: ${designBrief.designTokens?.colors?.secondary?.value || '#8B5CF6'}
+- Accent Color: ${designBrief.designTokens?.colors?.accent?.value || '#10B981'}
+- Background: ${designBrief.designTokens?.colors?.background?.value || '#09090B'}
+- Font Family: ${designBrief.designTokens?.typography?.fontFamilies?.primary?.value || 'Inter'}
+- Brand Mood: ${designBrief.visualIdentity?.mood || 'Professional and modern'}
+- Product Name: ${designBrief.projectOverview?.productName || 'Your Product'}
+
+CRITICAL REQUIREMENTS:
+1. **KEEP** the template's layout structure (${templateAnalysis.layout || 'grid-based layout'})
+2. **KEEP** the template's component types (${(templateAnalysis.components || []).join(', ')})
+3. **APPLY** user's colors - replace template palette with user's exact hex codes
+4. **APPLY** user's font family
+5. **MATCH** user's brand mood in content/copy
+6. **USE** the template's patterns (${(templateAnalysis.patterns || []).join(', ')})
+7. **MATCH** the template's spacing style (${templateAnalysis.spacing || 'balanced'})
+
+OUTPUT REQUIREMENTS:
+- Return ONLY production-ready HTML with inline CSS (single self-contained file)
+- Use user's exact color values from design brief
+- Maintain template's grid system (${templateAnalysis.gridSystem || 'CSS Grid'})
+- Apply template's responsiveness approach (${templateAnalysis.responsiveness || 'responsive'})
+- Keep layout proportions from template screenshot
+- Replace all placeholder content with product-specific copy
+- NO comments, NO explanations, ONLY the HTML code
+
+The output should look like the template structure but feel like the user's brand.`;
+
+  const userMessage = `Generate a ${pageType} page following the template structure but with my design tokens.`;
+
+  try {
+    const config = MODEL_CONFIGS.expandHomepage; // Claude Sonnet for quality
+    const { content, usage } = await callAIWithFallback(systemPrompt, userMessage, config);
+
+    // Extract HTML from response
+    const htmlMatch = content.match(/```html\n([\s\S]*?)\n```/);
+    const html = htmlMatch ? htmlMatch[1] : content;
+
+    console.log(`[TEMPLATE] ✓ Generated from template (${usage.totalTokens} tokens, $${usage.cost.total.toFixed(4)})`);
+
+    return {
+      success: true,
+      html,
+      templateUsed: templateAnalysis.category || 'custom',
+      cost: usage.cost.total,
+      tokens: usage.totalTokens,
+      model: usage.model,
+      _meta: {
+        model: usage.model,
+        tokens: usage.totalTokens,
+        cost: usage.cost.total,
+        timestamp: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('[TEMPLATE] Generation failed:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to generate from template',
+    };
+  }
+}
+
+// ============================================================================
 // PROMPT GENERATION - Agent-specific coding instructions
 // ============================================================================
 export async function generatePrompt(format, research, insights, features, prd, designBrief, options = {}) {

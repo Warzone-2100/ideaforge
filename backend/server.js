@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs';
-import { analyzeResearch, generateFeatures, refineFeatures, generatePRD, generateDatabaseSchema, generateApiEndpoints, generateComponentTree, generatePrompt, generateStoryFiles, generateDesignBrief, chatWithExport, generateDesignVariations, expandToHomepage, chatWithDesignBrief, regenerateDesignBrief } from './services/aiService.js';
+import { analyzeResearch, generateFeatures, refineFeatures, generatePRD, generateDatabaseSchema, generateApiEndpoints, generateComponentTree, generatePrompt, generateStoryFiles, generateDesignBrief, chatWithExport, generateDesignVariations, expandToHomepage, chatWithDesignBrief, regenerateDesignBrief, analyzeDesignScreenshot, generateFromTemplate } from './services/aiService.js';
 import { generateSkillFiles } from './services/skillsService.js';
 
 dotenv.config();
@@ -280,6 +280,97 @@ app.post('/api/design/expand', async (req, res) => {
   }
 });
 
+// Analyze design screenshot (template inspiration)
+app.post('/api/templates/analyze', async (req, res) => {
+  try {
+    const { image, notes } = req.body;
+
+    if (!image) {
+      return res.status(400).json({
+        success: false,
+        error: 'Image is required'
+      });
+    }
+
+    // Validate image format (should be data:image/... base64)
+    if (!image.startsWith('data:image/')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid image format. Must be base64 data URL (data:image/...)'
+      });
+    }
+
+    // Check image size (approximate - base64 is ~33% larger than binary)
+    const base64Length = image.length;
+    const estimatedBytes = (base64Length * 3) / 4;
+    const estimatedMB = estimatedBytes / (1024 * 1024);
+
+    if (estimatedMB > 10) {
+      return res.status(400).json({
+        success: false,
+        error: `Image too large (${estimatedMB.toFixed(1)}MB). Maximum 10MB.`
+      });
+    }
+
+    console.log(`[TEMPLATE] Analyzing screenshot (${estimatedMB.toFixed(2)}MB)`);
+
+    const result = await analyzeDesignScreenshot(image, notes);
+
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error('Template analysis error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to analyze screenshot'
+    });
+  }
+});
+
+// Generate from template (apply design tokens to template structure)
+app.post('/api/templates/generate', async (req, res) => {
+  try {
+    const { templateId, template, designBrief, pageType } = req.body;
+
+    if (!template || !designBrief) {
+      return res.status(400).json({
+        success: false,
+        error: 'Template and design brief are required'
+      });
+    }
+
+    if (!template.analysis) {
+      return res.status(400).json({
+        success: false,
+        error: 'Template must have analysis data'
+      });
+    }
+
+    console.log(`[TEMPLATE] Generating ${pageType || 'dashboard'} from template: ${template.name || 'Unnamed'}`);
+
+    const result = await generateFromTemplate(
+      template.analysis,
+      designBrief,
+      pageType || 'dashboard'
+    );
+
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error('Template generation error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to generate from template'
+    });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`
@@ -297,6 +388,8 @@ app.listen(PORT, () => {
   ║   POST /api/design/generate  - Generate design    ║
   ║   POST /api/design/variations - 🎨 3 UI variations ║
   ║   POST /api/design/expand    - 🚀 Expand homepage  ║
+  ║   POST /api/templates/analyze - 📸 Analyze screenshot║
+  ║   POST /api/templates/generate - ✨ Generate from template║
   ║   POST /api/stories/generate - Generate stories   ║
   ║   POST /api/export/chat      - Export ideation    ║
   ║   POST /api/export/:format   - Export prompts     ║
