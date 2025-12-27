@@ -101,6 +101,86 @@ class AIService {
     }
   }
 
+  async generateDatabaseSchema(acceptedFeatures, prdContent) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/schema/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          features: acceptedFeatures,
+          prd: prdContent,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return trackUsage('databaseSchema', data);
+    } catch (error) {
+      console.error('Database schema generation error:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  async generateApiEndpoints(acceptedFeatures, databaseSchema, prdContent) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/endpoints/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          features: acceptedFeatures,
+          databaseSchema,
+          prd: prdContent,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return trackUsage('apiEndpoints', data);
+    } catch (error) {
+      console.error('API endpoints generation error:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  async generateComponentTree(acceptedFeatures, apiEndpoints, prdContent) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/components/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          features: acceptedFeatures,
+          apiEndpoints,
+          prd: prdContent,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return trackUsage('componentTree', data);
+    } catch (error) {
+      console.error('Component tree generation error:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
   async generatePrompt(format, researchContent, insights, features, prdContent) {
     try {
       const response = await fetch(`${API_BASE_URL}/export/${format}`, {
@@ -126,7 +206,7 @@ class AIService {
     }
   }
 
-  async generateStories(features, prdContent) {
+  async generateStories(features, prdContent, databaseSchema, apiEndpoints, componentTree) {
     try {
       const response = await fetch(`${API_BASE_URL}/stories/generate`, {
         method: 'POST',
@@ -134,6 +214,9 @@ class AIService {
         body: JSON.stringify({
           features,
           prd: prdContent,
+          databaseSchema,
+          apiEndpoints,
+          componentTree,
         }),
       });
 
@@ -771,7 +854,7 @@ ${(f.edgeCases || ['Handle empty state', 'Handle loading state', 'Handle error s
       if (data._meta && data.variations) {
         data.variations.forEach((variation) => {
           if (variation._meta) {
-            trackUsage('designVariations', variation._meta);
+            trackUsage('designVariations', variation);
           }
         });
       }
@@ -802,7 +885,7 @@ ${(f.edgeCases || ['Handle empty state', 'Handle loading state', 'Handle error s
 
       // Track usage
       if (data._meta) {
-        trackUsage('expandHomepage', data._meta);
+        trackUsage('expandHomepage', data);
       }
 
       return data;

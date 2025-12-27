@@ -725,101 +725,580 @@ Requirements:
 }
 
 // ============================================================================
-// STORY FILES GENERATION - Atomic, AI-digestible story files (BMAD-inspired)
+// DATABASE SCHEMA GENERATION - Field-level specs for AI developers
 // ============================================================================
-export async function generateStoryFiles(features, prd) {
-  const systemPrompt = `You are a Scrum Master generating story files for AI coding agents.
+export async function generateDatabaseSchema(features, prd) {
+  const systemPrompt = `You are a database architect creating complete database schema specifications for AI developers.
 
-Each story file is ATOMIC and SELF-CONTAINED - a coding agent can implement it without needing other context.
+Your job: Generate DATABASE_SCHEMA.md with field-level specifications, validation rules, security requirements, and indexes.
+
+**DO NOT generate:**
+- TypeScript interfaces
+- Prisma schema code
+- SQL statements
+- Code examples
+
+**DO generate:**
+- Field specifications (name, type, validation, purpose)
+- Security rules (who can read/write)
+- Index requirements (which fields, why)
+- CRUD operation requirements
+
+FORMAT:
+
+# Database Schema Specification
+
+## Overview
+[Brief description of database architecture]
+
+---
+
+### Collection/Table: \`collection_name\`
+
+**Purpose:** [What this collection stores and why]
+
+**Required Fields:**
+- \`id\` (string, auto-generated): Unique identifier
+- \`userId\` (string): Owner's Firebase Auth UID
+- \`fieldName\` (string, 2-100 chars): [Description and validation rules]
+- \`status\` (enum: 'draft' | 'active' | 'completed'): [Purpose]
+
+**Optional Fields:**
+- \`metadata\` (object with \`key\` string): [When/why populated]
+
+**Auto-Managed Fields:**
+- \`createdAt\` (timestamp): Record creation time
+- \`updatedAt\` (timestamp): Last modification time
+
+**Security Rules:**
+- Users can only read/write their own records (userId === auth.uid)
+- No public read access
+- [Other specific rules]
+
+**Indexes Needed:**
+- Composite: \`userId ASC, status ASC\` - For user dashboard queries
+- Single: \`createdAt DESC\` - For recent items listing
+
+**CRUD Operations Required:**
+- **Create:** Requires userId, fieldName; auto-generates id, timestamps
+- **Read:** By ID (owner only), by userId (all user's records)
+- **Update:** Can update fieldName, status; cannot update userId
+- **Delete:** Soft delete (update status to 'deleted')
+
+[Repeat for each collection]
+
+---
+
+For each feature, identify:
+- What data needs to be stored?
+- What fields are required vs optional?
+- What security rules apply?
+- What queries will be run (to determine indexes)?
+
+Respond with the complete DATABASE_SCHEMA.md as markdown text (NOT JSON).`;
+
+  const featuresFormatted = features.map((f, i) => {
+    let text = `**Feature ${i + 1}: ${f.name}** (${f.priority})`;
+    text += `\nDescription: ${f.description}`;
+    if (f.acceptanceCriteria?.length) text += `\nAcceptance Criteria:\n${f.acceptanceCriteria.map(c => `- ${c}`).join('\n')}`;
+    return text;
+  }).join('\n\n---\n\n');
+
+  const userMessage = `Generate complete DATABASE_SCHEMA.md based on:
+
+FEATURES:
+${featuresFormatted}
+
+PRD FUNCTIONAL REQUIREMENTS:
+${(prd || '').substring(0, 3000)}
+
+Generate the complete database schema specification as markdown.`;
+
+  try {
+    const config = MODEL_CONFIGS.databaseSchema;
+    const { content, usage } = await callAIWithFallback(systemPrompt, userMessage, config);
+
+    return {
+      success: true,
+      schema: content,
+      _meta: {
+        model: usage.model,
+        tokens: usage.totalTokens,
+        cost: usage.cost,
+      }
+    };
+  } catch (error) {
+    console.error('Database schema generation error:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
+// API ENDPOINTS GENERATION - Request/response specs for AI developers
+// ============================================================================
+export async function generateApiEndpoints(features, databaseSchema, prd) {
+  const systemPrompt = `You are an API architect creating complete API endpoint specifications for AI developers.
+
+Your job: Generate API_ENDPOINTS.md with request/response specs, business logic requirements, and error handling.
+
+**DO NOT generate:**
+- TypeScript types/interfaces
+- Next.js route code
+- Express handler code
+- Code examples
+
+**DO generate:**
+- Input requirements (fields, validation, types)
+- Success response structure
+- Error response conditions
+- Business logic step-by-step
+- Rate limiting requirements
+
+FORMAT:
+
+# API Endpoints Specification
+
+## Overview
+[API architecture notes]
+
+---
+
+### POST \`/api/endpoint-name\`
+
+**Purpose:** [What this endpoint accomplishes - one sentence]
+
+**Authentication:** Required (Firebase Auth token in Authorization header)
+
+**Input Requirements:**
+- \`field1\` (string, required, 2-100 chars): [Description and validation]
+- \`field2\` (number, optional, 1-1000): [Description, default: 10]
+- \`field3\` (enum, required): One of 'option1', 'option2', 'option3'
+
+**Success Response:**
+- **Status:** 201 Created
+- **Body Structure:** \`{ success: true, data: { id, field1, field2, createdAt } }\`
+
+**Error Responses:**
+- **400 Bad Request:** Missing required fields, invalid format, out of range
+  - Example message: "field1 is required"
+- **401 Unauthorized:** Missing or invalid auth token
+- **500 Internal Server Error:** Database write failed, external API error
+
+**Business Logic (Step-by-Step):**
+1. Validate auth token → Extract userId
+2. Validate input fields:
+   - Check required fields present
+   - Validate field1 length (2-100 chars)
+   - Validate field2 range (1-1000)
+   - Validate field3 enum value
+3. Call external API (if needed):
+   - API: [Service Name]
+   - Endpoint: [URL pattern]
+   - Send: [What data]
+   - Handle response: [How to process]
+4. Transform data:
+   - Extract [fields]
+   - Convert [format] to [format]
+   - Calculate [derived values]
+5. Save to database:
+   - Collection: \`collection_name\`
+   - Include: userId, field1, field2, timestamps
+6. Return formatted response
+
+**Rate Limiting:** 10 requests per minute per user
+
+**Implementation Location:** \`app/api/endpoint-name/route.ts\`
+
+[Repeat for each endpoint]
+
+---
+
+For each feature, identify:
+- What API endpoints are needed?
+- What inputs do they accept?
+- What business logic is required?
+- What can go wrong (errors)?
+
+Respond with the complete API_ENDPOINTS.md as markdown text (NOT JSON).`;
+
+  const featuresFormatted = features.map((f, i) => {
+    let text = `**Feature ${i + 1}: ${f.name}** (${f.priority})`;
+    text += `\nDescription: ${f.description}`;
+    if (f.acceptanceCriteria?.length) text += `\nAcceptance Criteria:\n${f.acceptanceCriteria.map(c => `- ${c}`).join('\n')}`;
+    return text;
+  }).join('\n\n---\n\n');
+
+  const userMessage = `Generate complete API_ENDPOINTS.md based on:
+
+FEATURES:
+${featuresFormatted}
+
+DATABASE_SCHEMA:
+${(databaseSchema || '').substring(0, 2000)}
+
+PRD CONTEXT:
+${(prd || '').substring(0, 2000)}
+
+Generate the complete API endpoints specification as markdown.`;
+
+  try {
+    const config = MODEL_CONFIGS.apiEndpoints;
+    const { content, usage } = await callAIWithFallback(systemPrompt, userMessage, config);
+
+    return {
+      success: true,
+      endpoints: content,
+      _meta: {
+        model: usage.model,
+        tokens: usage.totalTokens,
+        cost: usage.cost,
+      }
+    };
+  } catch (error) {
+    console.error('API endpoints generation error:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
+// COMPONENT TREE GENERATION - Frontend architecture specs for AI developers
+// ============================================================================
+export async function generateComponentTree(features, apiEndpoints, prd) {
+  const systemPrompt = `You are a frontend architect creating complete component specifications for AI developers.
+
+Your job: Generate COMPONENT_TREE.md with component hierarchy, props, state, and interactions.
+
+**DO NOT generate:**
+- React component code
+- TypeScript type definitions
+- JSX examples
+- Code snippets
+
+**DO generate:**
+- Component hierarchy (parent-child relationships)
+- Props requirements (name, type, purpose)
+- State requirements (what, why, when)
+- User interaction flows
+- Styling requirements (reference design tokens)
+
+FORMAT:
+
+# Component Architecture Specification
+
+## Overview
+[Component architecture approach]
+
+---
+
+### Page: \`app/feature-name/page.tsx\`
+
+**Type:** Server Component
+**Purpose:** [What this page does]
+**Data Fetching:** [What data to fetch server-side]
+**Child Components:** MainComponent, Sidebar
+
+---
+
+### Component: \`MainComponent\`
+
+**Location:** \`components/feature/MainComponent.tsx\`
+**Type:** Client Component (requires interactivity)
+**Purpose:** [Single responsibility of this component]
+
+**Props Required:**
+- \`onSubmit\` (function: (data) => Promise<void>): [When/how called]
+- \`initialData\` (object, optional): [Purpose]
+- \`isLoading\` (boolean): [What it controls]
+
+**State Requirements:**
+- \`formData\` (object): Current form values
+  - Initial: empty or from initialData
+  - Updated: on user input
+- \`validationErrors\` (string[]): Validation messages
+  - Initial: []
+  - Updated: on validation failure
+- \`isSubmitting\` (boolean): Submission state
+  - Initial: false
+  - Updated: true during API call
+
+**User Interactions:**
+- Type in field → Update formData, clear errors
+- Click submit → Validate, call onSubmit, show loading
+- On error → Display validation errors
+
+**Child Components:**
+- \`FormInput\` - Reusable input with validation
+- \`ErrorDisplay\` - Show errors
+- \`SubmitButton\` - Handle loading states
+
+**Styling Requirements:**
+- Use design tokens from design-brief.json
+- Primary button: \`primary\` color
+- Error text: \`error\` color
+- Responsive: Stack on mobile
+
+---
+
+### State Management: \`stores/featureStore.ts\`
+
+**Solution:** Zustand
+
+**State Schema:**
+\`\`\`
+{
+  currentData: object | null,
+  savedRecords: array,
+  isLoading: boolean,
+  error: string | null
+}
+\`\`\`
+
+**Actions Required:**
+- \`submitData(data)\`: Call API POST, update savedRecords
+- \`fetchRecords()\`: Call API GET, populate savedRecords
+- \`resetForm()\`: Clear currentData and error
+
+[Repeat for each page/component]
+
+---
+
+For each feature, identify:
+- What pages are needed?
+- What components make up each page?
+- What props do components need?
+- What state is required?
+- How do users interact?
+
+Respond with the complete COMPONENT_TREE.md as markdown text (NOT JSON).`;
+
+  const featuresFormatted = features.map((f, i) => {
+    let text = `**Feature ${i + 1}: ${f.name}** (${f.priority})`;
+    text += `\nDescription: ${f.description}`;
+    if (f.acceptanceCriteria?.length) text += `\nAcceptance Criteria:\n${f.acceptanceCriteria.map(c => `- ${c}`).join('\n')}`;
+    return text;
+  }).join('\n\n---\n\n');
+
+  const userMessage = `Generate complete COMPONENT_TREE.md based on:
+
+FEATURES:
+${featuresFormatted}
+
+API_ENDPOINTS:
+${(apiEndpoints || '').substring(0, 2000)}
+
+PRD CONTEXT:
+${(prd || '').substring(0, 2000)}
+
+Generate the complete component architecture specification as markdown.`;
+
+  try {
+    const config = MODEL_CONFIGS.componentTree;
+    const { content, usage } = await callAIWithFallback(systemPrompt, userMessage, config);
+
+    return {
+      success: true,
+      components: content,
+      _meta: {
+        model: usage.model,
+        tokens: usage.totalTokens,
+        cost: usage.cost,
+      }
+    };
+  } catch (error) {
+    console.error('Component tree generation error:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
+// STORY FILES GENERATION - Atomic, AI-digestible story files (SPECIFICATION-FOCUSED)
+// ============================================================================
+export async function generateStoryFiles(features, prd, databaseSchema, apiEndpoints, componentTree) {
+  const systemPrompt = `You are a Scrum Master generating SPECIFICATION-FOCUSED story files for AI coding agents with modern tooling.
+
+Each story provides SPECIFICATIONS (requirements, schemas, endpoints) NOT implementations (code examples).
+
+BMAD BEST PRACTICES (2025):
+- **Traceability First**: Every decision links back to PRD and original research
+- **Security by Default**: Explicit security requirements in every story
+- **Architectural Context**: Explain WHY, not just WHAT
+- **Self-Contained**: Each story has full context for independent implementation
+
+AI developers will use:
+- **context7** to fetch latest framework docs
+- **LSP plugins** for code intelligence
+- **Explore subagent** to find patterns in codebase
 
 STORY FILE FORMAT:
-
-For each feature, generate a story file with this EXACT structure:
 
 \`\`\`markdown
 # Story [EPIC].[STORY]: [Title]
 
-**Status:** ready-for-dev
+**Status:** draft
 **Priority:** [mvp|high|medium|low]
 **Complexity:** [small|medium|large]
+**Depends On:** Story Y.Y | None
+**Blocks:** Story Z.Z
 
 ---
 
 ## User Story
 
-As a [specific user role],
-I want to [specific action],
-so that [measurable benefit].
+As a [persona], I want [goal] so that [benefit].
+
+---
+
+## PRD Traceability
+
+- **PRD Section:** [FR-X.Y or NFR-X.Y from PRD]
+- **Why This Matters:** [Link to core value proposition or user pain point from research]
+- **Success Metric:** [Specific metric from PRD that this story impacts]
+- **Research Quote:** "[Direct quote from original research that validates this need]"
 
 ---
 
 ## Acceptance Criteria
 
-1. [ ] [Specific, testable criterion - starts with "Given/When/Then" or imperative]
-2. [ ] [Another criterion - UNIQUE to this story]
-3. [ ] [Include at least one UX/performance criterion]
-4. [ ] [Include error state handling]
+1. [ ] [Specific, testable criterion]
+2. [ ] [Another criterion]
+3. [ ] [UX/performance criterion]
+4. [ ] [Error handling criterion]
 
 ---
 
-## Implementation Tasks
+## Security Requirements
 
-- [ ] **Task 1:** [Specific implementation step] (AC: #1)
-  - [ ] Subtask 1.1: [Detailed step]
-  - [ ] Subtask 1.2: [Detailed step]
-- [ ] **Task 2:** [Another step] (AC: #2, #3)
-  - [ ] Subtask 2.1: [Detailed step]
-- [ ] **Task 3:** [Testing/validation] (AC: #4)
-
----
-
-## Dev Notes
-
-### Architecture
-- [Which component/module this belongs to]
-- [Key patterns to follow]
-- [State management approach for this feature]
-
-### API/Data
-- [Endpoints needed, if any]
-- [Data models involved]
-
-### Edge Cases
-- [What happens when X fails]
-- [Empty states]
-- [Loading states]
-
-### Testing
-- [Key test scenarios]
-- [What to verify]
+- **Authentication:** [What auth is required, which roles/permissions]
+- **Authorization:** [Role-based access control rules, who can do what]
+- **Data Validation:** [Input sanitization, XSS/injection prevention]
+- **Rate Limiting:** [API rate limits, abuse prevention]
+- **Sensitive Data:** [PII handling, encryption requirements]
+- **Audit Trail:** [What actions need logging for compliance]
 
 ---
 
-## Dependencies
+## Database Schema Specification
 
-- **Requires:** [What must exist before this can be built]
-- **Blocks:** [What depends on this being complete]
+**Reference:** DATABASE_SCHEMA.md → Collection: \`collection_name\`
+
+**Key Requirements:**
+- Required fields: [list with validation rules]
+- Security: [access control requirements]
+- Indexes: [which and why]
 
 ---
 
-## Out of Scope
+## API Endpoints Specification
 
-- [What this story explicitly does NOT cover]
+**Reference:** API_ENDPOINTS.md → POST \`/api/endpoint\`
+
+**Key Requirements:**
+- Input validation: [rules]
+- Business logic: [step-by-step]
+- Success response: [structure]
+- Error handling: [conditions]
+
+---
+
+## Architectural Decisions
+
+- **Pattern:** [e.g., Server-side rendering with client components]
+- **Why:** [Reasoning from architecture phase - performance, SEO, DX, etc.]
+- **Trade-offs:** [What we gain vs. what we sacrifice]
+- **Alternative Considered:** [What else was considered and why rejected]
+
+---
+
+## Component Architecture Specification
+
+**Reference:** COMPONENT_TREE.md → Components for this feature
+
+**Key Requirements:**
+- Page type: [Server/Client and why]
+- Components needed: [list]
+- Props: [per component]
+- State: [what and where]
+- User interactions: [flows]
+
+---
+
+## Implementation Requirements
+
+### Files to Create:
+- [ ] \`app/feature/page.tsx\` - [purpose]
+- [ ] \`app/api/endpoint/route.ts\` - [purpose]
+- [ ] \`components/MainComponent.tsx\` - [purpose]
+- [ ] \`lib/feature-helper.ts\` - [purpose]
+- [ ] \`stores/featureStore.ts\` - [purpose]
+
+### Business Logic:
+- Input validation: [specify rules]
+- External API: [which service, how to integrate]
+- Data transformation: [describe transformations]
+- Error handling: [which errors, how to handle]
+
+---
+
+## Edge Cases & Handling
+
+1. **[Edge Case Name]**
+   - **Condition:** [When it occurs]
+   - **Expected Behavior:** [What should happen]
+   - **Implementation:** [How to handle]
+
+---
+
+## Validation Checkpoint ✅
+
+**STOP and test before proceeding**
+
+### Functional Tests:
+- [ ] Page renders without errors
+- [ ] Form validation works
+- [ ] Data persists correctly
+
+### Technical Tests:
+- [ ] TypeScript builds
+- [ ] All acceptance criteria met
+- [ ] Security rules tested
+
+### Security Tests:
+- [ ] Authentication enforced
+- [ ] Authorization rules working
+- [ ] Input validation prevents injection
+
+---
+
+## MCP Usage
+
+When implementing this story:
+
+\`\`\`
+Use context7 to fetch latest Next.js 14 App Router docs
+Use context7 to fetch latest React 18 Server Components patterns
+Use Explore subagent to find existing API patterns in codebase
+\`\`\`
 
 ---
 
 ## References
 
-- PRD: [Relevant FR numbers, e.g., "FR1, FR2, FR5"]
-- Design: [Link or description if applicable]
+- DATABASE_SCHEMA.md: [Section]
+- API_ENDPOINTS.md: [Section]
+- COMPONENT_TREE.md: [Section]
+- PRD.md: [Section with FR/NFR numbers]
 \`\`\`
 
 CRITICAL RULES:
-1. Each story must be INDEPENDENTLY IMPLEMENTABLE
-2. Tasks must reference which Acceptance Criteria they satisfy
-3. No vague tasks like "implement feature" - be specific
-4. Include error states and edge cases
-5. Complexity: small = 1-2 days, medium = 3-5 days, large = 1-2 weeks
+1. **NO CODE EXAMPLES** - Only specifications
+2. Reference spec docs (DATABASE_SCHEMA, API_ENDPOINTS, COMPONENT_TREE)
+3. Each story independently implementable
+4. Include MCP tool usage instructions
+5. Validation checkpoints required
+6. **PRD Traceability** - Link every story back to specific PRD sections (FR/NFR numbers)
+7. **Security First** - Every story MUST have explicit security requirements
+8. **Architectural Context** - Explain WHY decisions were made, not just WHAT
+9. **Research Validation** - Include direct quotes from original research that validate the need
 
 Respond with JSON:
 {
@@ -829,15 +1308,12 @@ Respond with JSON:
       "storyNumber": 1,
       "title": "Story title",
       "filename": "story-1-1-title-slug.md",
-      "content": "Full markdown content of the story file"
+      "content": "Full markdown (NO code examples!)"
     }
   ],
-  "epicSummary": {
-    "1": "Epic 1 name/description",
-    "2": "Epic 2 name/description"
-  },
-  "implementationOrder": ["story-1-1-...", "story-1-2-...", "story-2-1-..."],
-  "totalComplexity": "X small, Y medium, Z large stories"
+  "epicSummary": {},
+  "implementationOrder": [],
+  "totalComplexity": ""
 }`;
 
   const featuresFormatted = features.map((f, i) => {
@@ -850,20 +1326,34 @@ Respond with JSON:
     return text;
   }).join('\n\n---\n\n');
 
-  const userMessage = `Generate atomic story files for each of these features.
+  const userMessage = `Generate story files based on:
 
-FEATURES TO CONVERT TO STORIES:
+FEATURES:
 ${featuresFormatted}
 
-PRD CONTEXT (for FR references):
-${(prd || '').substring(0, 3000)}
+DATABASE_SCHEMA:
+${(databaseSchema || '').substring(0, 2000)}
+
+API_ENDPOINTS:
+${(apiEndpoints || '').substring(0, 2000)}
+
+COMPONENT_TREE:
+${(componentTree || '').substring(0, 2000)}
+
+PRD:
+${(prd || '').substring(0, 2000)}
 
 Requirements:
 - One story file per feature (complex features may become 2-3 stories)
 - Group related features into epics
 - Each story must be independently implementable
-- Tasks must reference Acceptance Criteria numbers
-- Include implementation order based on dependencies`;
+- Reference spec docs (NO inline code examples!)
+- Include MCP usage instructions per story
+- Include validation checkpoints
+- **PRD Traceability**: Link each story to specific PRD FR/NFR numbers
+- **Security Requirements**: Every story needs explicit security section
+- **Architectural Decisions**: Explain WHY architectural choices were made
+- **Research Validation**: Include relevant quotes from original research`;
 
   try {
     const config = MODEL_CONFIGS.storyFiles;

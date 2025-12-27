@@ -22,6 +22,9 @@ import { aiService } from '../../services/aiService';
 export default function StoriesStep() {
   const {
     prd,
+    databaseSchema,
+    apiEndpoints,
+    componentTree,
     setCurrentStep,
     getAcceptedFeatures,
     storyFiles,
@@ -39,7 +42,13 @@ export default function StoriesStep() {
 
     try {
       const acceptedFeatures = getAcceptedFeatures();
-      const result = await aiService.generateStories(acceptedFeatures, prd.content);
+      const result = await aiService.generateStories(
+        acceptedFeatures,
+        prd.content,
+        databaseSchema.content,
+        apiEndpoints.content,
+        componentTree.content
+      );
 
       if (result.success) {
         setStoryFiles(result.stories || []);

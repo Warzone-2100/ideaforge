@@ -342,11 +342,17 @@ All prompts are designed to **reject generic output**:
 - Anti-patterns list (things to NEVER do)
 - Component patterns with specific behaviors
 
-### Story Files
-- BMAD-style atomic story files
+### Story Files (BMAD Method 2025)
+- **BMAD-style atomic story files** with enhanced best practices
+- **Status:** Stories start as `draft` (not `ready-for-dev`)
+- **PRD Traceability:** Every story links back to specific FR/NFR numbers from PRD
+- **Security Requirements:** Explicit security section in every story (auth, authz, validation, rate limiting)
+- **Architectural Decisions:** Explains WHY patterns were chosen, not just WHAT
+- **Research Validation:** Includes direct quotes from original research
 - Each story independently implementable
 - Tasks reference acceptance criteria numbers
 - Includes dependencies and implementation order
+- **Validation Checkpoints:** Functional, Technical, and Security test gates
 
 ---
 
@@ -524,6 +530,19 @@ From `index.json`:
 ---
 
 ## Changelog
+
+### 2025-12-26
+- **🎯 Enhanced BMAD Story Files with 2025 Best Practices:**
+  - **PRD Traceability Section**: Every story now links back to specific PRD FR/NFR numbers, success metrics, and original research quotes
+  - **Security Requirements Section**: Explicit security requirements in every story (Authentication, Authorization, Data Validation, Rate Limiting, Sensitive Data, Audit Trail)
+  - **Architectural Decisions Section**: Documents WHY architectural patterns were chosen, trade-offs made, and alternatives considered
+  - **Research Validation**: Includes direct quotes from original research to validate feature needs
+  - **Status Field Updated**: Stories now start as `draft` (BMAD 2025 standard) instead of `ready-for-dev`
+  - **Enhanced Validation Checkpoints**: Added Security Tests section alongside Functional and Technical tests
+  - **Updated System Prompt**: Added BMAD 2025 best practices guidance (Traceability First, Security by Default, Architectural Context, Self-Contained)
+  - **9 Critical Rules**: Expanded from 5 to 9 rules including PRD traceability, security-first, architectural context, and research validation
+  - File: `backend/services/aiService.js` (lines 1117-1356)
+  - **Impact**: Story files now exceed official BMAD Method standards with better traceability and security coverage
 
 ### 2025-12-25
 - **🚀 Upgraded to Multi-Model Routing Strategy:**

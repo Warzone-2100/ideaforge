@@ -22,8 +22,17 @@ export default function PRDStep() {
     insights,
     features,
     prd,
+    databaseSchema,
+    apiEndpoints,
+    componentTree,
     setPRD,
     setPRDGenerating,
+    setDatabaseSchema,
+    setDatabaseSchemaGenerating,
+    setApiEndpoints,
+    setApiEndpointsGenerating,
+    setComponentTree,
+    setComponentTreeGenerating,
     setCurrentStep,
     getAcceptedFeatures,
   } = useAppStore();
@@ -31,10 +40,12 @@ export default function PRDStep() {
   const [viewMode, setViewMode] = useState('preview');
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState(null);
+  const [currentPhase, setCurrentPhase] = useState('prd'); // 'prd' | 'schema' | 'endpoints' | 'components' | 'complete'
 
   const generatePRD = async () => {
     setPRDGenerating(true);
     setError(null);
+    setCurrentPhase('prd');
 
     try {
       const acceptedFeatures = getAcceptedFeatures();
@@ -42,11 +53,64 @@ export default function PRDStep() {
 
       if (result.success) {
         setPRD({ content: result.prd });
+        // Auto-generate spec docs after PRD
+        await generateSpecifications(result.prd);
       } else {
         setError(result.error || 'Failed to generate PRD');
+        setPRDGenerating(false);
       }
     } catch (err) {
       setError(err.message || 'An error occurred');
+      setPRDGenerating(false);
+    }
+  };
+
+  const generateSpecifications = async (prdContent) => {
+    try {
+      const acceptedFeatures = getAcceptedFeatures();
+
+      // Step 1: Generate Database Schema
+      setCurrentPhase('schema');
+      setDatabaseSchemaGenerating(true);
+      const schemaResult = await aiService.generateDatabaseSchema(acceptedFeatures, prdContent);
+
+      if (!schemaResult.success) {
+        throw new Error(schemaResult.error || 'Failed to generate database schema');
+      }
+      setDatabaseSchema(schemaResult.schema);
+      setDatabaseSchemaGenerating(false);
+
+      // Step 2: Generate API Endpoints (depends on schema)
+      setCurrentPhase('endpoints');
+      setApiEndpointsGenerating(true);
+      const endpointsResult = await aiService.generateApiEndpoints(acceptedFeatures, schemaResult.schema, prdContent);
+
+      if (!endpointsResult.success) {
+        throw new Error(endpointsResult.error || 'Failed to generate API endpoints');
+      }
+      setApiEndpoints(endpointsResult.endpoints);
+      setApiEndpointsGenerating(false);
+
+      // Step 3: Generate Component Tree (depends on endpoints)
+      setCurrentPhase('components');
+      setComponentTreeGenerating(true);
+      const componentsResult = await aiService.generateComponentTree(acceptedFeatures, endpointsResult.endpoints, prdContent);
+
+      if (!componentsResult.success) {
+        throw new Error(componentsResult.error || 'Failed to generate component tree');
+      }
+      setComponentTree(componentsResult.components);
+      setComponentTreeGenerating(false);
+
+      // All done!
+      setCurrentPhase('complete');
+      setPRDGenerating(false);
+    } catch (err) {
+      setError(err.message || 'Failed to generate specifications');
+      setPRDGenerating(false);
+      setDatabaseSchemaGenerating(false);
+      setApiEndpointsGenerating(false);
+      setComponentTreeGenerating(false);
     }
   };
 
@@ -72,11 +136,11 @@ export default function PRDStep() {
   };
 
   const handleProceed = () => {
-    // PRD is complete, proceed to Agent Prompts step
+    // All specs complete, proceed to Agent Prompts step
     setCurrentStep('prompts');
   };
 
-  const canProceed = prd.content !== null;
+  const canProceed = prd.content !== null && databaseSchema.content !== null && apiEndpoints.content !== null && componentTree.content !== null;
 
   return (
     <div className="space-y-6">
@@ -84,29 +148,46 @@ export default function PRDStep() {
       <div>
         <div className="flex items-center gap-2 text-[13px] text-zinc-500 mb-2">
           <FileCode className="w-4 h-4 text-indigo-400" />
-          Step 4 of 8
+          Steps 4-7 of 8
         </div>
         <h1 className="text-2xl font-semibold text-zinc-100 mb-2">
-          Product Requirements Document
+          Specifications & Requirements
         </h1>
         <p className="text-zinc-500 text-[15px]">
-          A comprehensive PRD based on your research and selected features.
+          Comprehensive specs: PRD, Database Schema, API Endpoints, Component Architecture
         </p>
       </div>
 
       {/* Loading state */}
       {prd.isGenerating && (
-        <div className="card p-12 flex flex-col items-center justify-center gap-4">
+        <div className="card p-12 flex flex-col items-center justify-center gap-6">
           <div className="relative">
             <div className="w-16 h-16 rounded-full bg-indigo-500/20 flex items-center justify-center">
               <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
             </div>
           </div>
-          <div className="text-center">
-            <p className="text-zinc-200 font-medium">Generating your PRD...</p>
-            <p className="text-zinc-500 text-sm mt-1">
-              Creating product overview, user stories, and specifications
-            </p>
+          <div className="text-center space-y-4">
+            <div>
+              <p className="text-zinc-200 font-medium">
+                {currentPhase === 'prd' && 'Generating PRD...'}
+                {currentPhase === 'schema' && 'Generating Database Schema...'}
+                {currentPhase === 'endpoints' && 'Generating API Endpoints...'}
+                {currentPhase === 'components' && 'Generating Component Tree...'}
+              </p>
+              <p className="text-zinc-500 text-sm mt-1">
+                {currentPhase === 'prd' && 'Creating product overview, user stories, and specifications'}
+                {currentPhase === 'schema' && 'Defining collections, fields, security rules, and indexes'}
+                {currentPhase === 'endpoints' && 'Specifying request/response contracts and business logic'}
+                {currentPhase === 'components' && 'Architecting component hierarchy, props, and state'}
+              </p>
+            </div>
+            {/* Progress indicators */}
+            <div className="flex items-center justify-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${currentPhase === 'prd' ? 'bg-indigo-400 animate-pulse' : 'bg-zinc-600'}`} />
+              <div className={`w-2 h-2 rounded-full ${currentPhase === 'schema' ? 'bg-indigo-400 animate-pulse' : currentPhase === 'prd' ? 'bg-zinc-600' : 'bg-emerald-400'}`} />
+              <div className={`w-2 h-2 rounded-full ${currentPhase === 'endpoints' ? 'bg-indigo-400 animate-pulse' : ['prd', 'schema'].includes(currentPhase) ? 'bg-zinc-600' : 'bg-emerald-400'}`} />
+              <div className={`w-2 h-2 rounded-full ${currentPhase === 'components' ? 'bg-indigo-400 animate-pulse' : currentPhase === 'complete' ? 'bg-emerald-400' : 'bg-zinc-600'}`} />
+            </div>
           </div>
         </div>
       )}
@@ -126,6 +207,21 @@ export default function PRDStep() {
                 <RefreshCw className="w-4 h-4" />
                 Try again
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success message - All specs generated */}
+      {canProceed && !prd.isGenerating && (
+        <div className="card p-6 border-emerald-500/20 bg-emerald-500/5">
+          <div className="flex items-start gap-3">
+            <Check className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+            <div>
+              <p className="text-emerald-400 font-medium">All Specifications Generated ✨</p>
+              <p className="text-zinc-400 text-sm mt-1">
+                4 specification documents ready: PRD, Database Schema, API Endpoints, Component Tree
+              </p>
             </div>
           </div>
         </div>
@@ -179,7 +275,7 @@ export default function PRDStep() {
                          bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                Regenerate
+                Regenerate All
               </button>
             </div>
           </div>

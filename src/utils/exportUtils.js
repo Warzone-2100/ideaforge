@@ -24,6 +24,9 @@ export async function generateWorkflowZip(data) {
   const {
     research,
     prd,
+    databaseSchema,
+    apiEndpoints,
+    componentTree,
     agentPrompts,
     designVariations,
     storyFiles,
@@ -52,6 +55,19 @@ export async function generateWorkflowZip(data) {
 
   if (prd?.content) {
     docsFolder.file('PRD.md', prd.content);
+  }
+
+  // Specification documents (generated from PRD)
+  if (databaseSchema?.content) {
+    docsFolder.file('DATABASE_SCHEMA.md', databaseSchema.content);
+  }
+
+  if (apiEndpoints?.content) {
+    docsFolder.file('API_ENDPOINTS.md', apiEndpoints.content);
+  }
+
+  if (componentTree?.content) {
+    docsFolder.file('COMPONENT_TREE.md', componentTree.content);
   }
 
   if (agentPrompts.gemini) {
@@ -148,6 +164,9 @@ export function getExportSummary(data) {
   const {
     research,
     prd,
+    databaseSchema,
+    apiEndpoints,
+    componentTree,
     agentPrompts,
     designVariations,
     storyFiles,
@@ -164,6 +183,9 @@ export function getExportSummary(data) {
   // Count documentation files
   if (research?.content) summary.documentation++;
   if (prd?.content) summary.documentation++;
+  if (databaseSchema?.content) summary.documentation++;
+  if (apiEndpoints?.content) summary.documentation++;
+  if (componentTree?.content) summary.documentation++;
 
   // Count agent prompts
   if (agentPrompts.claude) summary.agentPrompts++;

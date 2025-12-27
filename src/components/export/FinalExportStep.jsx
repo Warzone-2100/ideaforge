@@ -19,6 +19,9 @@ export default function FinalExportStep() {
   const {
     research,
     prd,
+    databaseSchema,
+    apiEndpoints,
+    componentTree,
     agentPrompts,
     designVariations,
     storyFiles,
@@ -37,6 +40,9 @@ export default function FinalExportStep() {
       const result = await generateWorkflowZip({
         research,
         prd,
+        databaseSchema,
+        apiEndpoints,
+        componentTree,
         agentPrompts,
         designVariations,
         storyFiles,
@@ -142,6 +148,9 @@ export default function FinalExportStep() {
       items: [
         { name: 'Research', available: !!research.content },
         { name: 'PRD', available: !!prd.content },
+        { name: 'DATABASE_SCHEMA.md', available: !!databaseSchema?.content },
+        { name: 'API_ENDPOINTS.md', available: !!apiEndpoints?.content },
+        { name: 'COMPONENT_TREE.md', available: !!componentTree?.content },
       ],
     },
     {

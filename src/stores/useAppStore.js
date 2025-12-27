@@ -45,6 +45,24 @@ const useAppStore = create(
         isGenerating: false,
       },
 
+      // NEW: Database Schema Specification
+      databaseSchema: {
+        content: null,
+        isGenerating: false,
+      },
+
+      // NEW: API Endpoints Specification
+      apiEndpoints: {
+        content: null,
+        isGenerating: false,
+      },
+
+      // NEW: Component Tree Specification
+      componentTree: {
+        content: null,
+        isGenerating: false,
+      },
+
       // Export settings
       exportFormat: 'claude', // 'claude' | 'cursor' | 'gemini' | 'universal'
 
@@ -97,6 +115,9 @@ const useAppStore = create(
           features: { requests: 0, tokens: 0, cost: 0 },
           refineFeatures: { requests: 0, tokens: 0, cost: 0 },
           prd: { requests: 0, tokens: 0, cost: 0 },
+          databaseSchema: { requests: 0, tokens: 0, cost: 0 },
+          apiEndpoints: { requests: 0, tokens: 0, cost: 0 },
+          componentTree: { requests: 0, tokens: 0, cost: 0 },
           storyFiles: { requests: 0, tokens: 0, cost: 0 },
           designBrief: { requests: 0, tokens: 0, cost: 0 },
           designVariations: { requests: 0, tokens: 0, cost: 0 },
@@ -243,6 +264,31 @@ const useAppStore = create(
           ...state.prd,
           sections: { ...state.prd.sections, [section]: content },
         },
+      })),
+
+      // NEW: Setters for specification documents
+      setDatabaseSchema: (content) => set((state) => ({
+        databaseSchema: { ...state.databaseSchema, content, isGenerating: false },
+      })),
+
+      setApiEndpoints: (content) => set((state) => ({
+        apiEndpoints: { ...state.apiEndpoints, content, isGenerating: false },
+      })),
+
+      setComponentTree: (content) => set((state) => ({
+        componentTree: { ...state.componentTree, content, isGenerating: false },
+      })),
+
+      setDatabaseSchemaGenerating: (isGenerating) => set((state) => ({
+        databaseSchema: { ...state.databaseSchema, isGenerating },
+      })),
+
+      setApiEndpointsGenerating: (isGenerating) => set((state) => ({
+        apiEndpoints: { ...state.apiEndpoints, isGenerating },
+      })),
+
+      setComponentTreeGenerating: (isGenerating) => set((state) => ({
+        componentTree: { ...state.componentTree, isGenerating },
       })),
 
       setPRDGenerating: (isGenerating) => set((state) => ({
@@ -494,6 +540,9 @@ const useAppStore = create(
         insights: state.insights,
         features: state.features,
         prd: state.prd,
+        databaseSchema: state.databaseSchema,
+        apiEndpoints: state.apiEndpoints,
+        componentTree: state.componentTree,
         currentStep: state.currentStep,
         designPreferences: state.designPreferences,
         designVariations: state.designVariations,

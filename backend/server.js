@@ -1,13 +1,23 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { analyzeResearch, generateFeatures, refineFeatures, generatePRD, generatePrompt, generateStoryFiles, generateDesignBrief, chatWithExport, generateDesignVariations, expandToHomepage } from './services/aiService.js';
+import fs from 'fs';
+import { analyzeResearch, generateFeatures, refineFeatures, generatePRD, generateDatabaseSchema, generateApiEndpoints, generateComponentTree, generatePrompt, generateStoryFiles, generateDesignBrief, chatWithExport, generateDesignVariations, expandToHomepage } from './services/aiService.js';
 import { generateSkillFiles } from './services/skillsService.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Log to file for debugging
+const logFile = '/tmp/ideaforge-backend.log';
+function log(message) {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${message}\n`;
+  fs.appendFileSync(logFile, logMessage);
+  console.log(message);
+}
 
 // Middleware
 app.use(cors());
@@ -82,15 +92,66 @@ app.post('/api/prd/generate', async (req, res) => {
   }
 });
 
-// Generate story files (BMAD-style atomic stories)
-app.post('/api/stories/generate', async (req, res) => {
+// NEW: Generate Database Schema (specification-focused)
+app.post('/api/schema/generate', async (req, res) => {
+  log('📊 [SCHEMA] Request received');
   try {
     const { features, prd } = req.body;
     if (!features || features.length === 0) {
       return res.status(400).json({ success: false, error: 'Features are required' });
     }
 
-    const result = await generateStoryFiles(features, prd);
+    const result = await generateDatabaseSchema(features, prd);
+    res.json(result);
+  } catch (error) {
+    console.error('Database schema generation error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// NEW: Generate API Endpoints (specification-focused)
+app.post('/api/endpoints/generate', async (req, res) => {
+  log('🔌 [ENDPOINTS] Request received');
+  try {
+    const { features, databaseSchema, prd } = req.body;
+    if (!features || features.length === 0) {
+      return res.status(400).json({ success: false, error: 'Features are required' });
+    }
+
+    const result = await generateApiEndpoints(features, databaseSchema, prd);
+    res.json(result);
+  } catch (error) {
+    console.error('API endpoints generation error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// NEW: Generate Component Tree (specification-focused)
+app.post('/api/components/generate', async (req, res) => {
+  log('🎨 [COMPONENTS] Request received');
+  try {
+    const { features, apiEndpoints, prd } = req.body;
+    if (!features || features.length === 0) {
+      return res.status(400).json({ success: false, error: 'Features are required' });
+    }
+
+    const result = await generateComponentTree(features, apiEndpoints, prd);
+    res.json(result);
+  } catch (error) {
+    console.error('Component tree generation error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Generate story files (specification-focused, references spec docs)
+app.post('/api/stories/generate', async (req, res) => {
+  try {
+    const { features, prd, databaseSchema, apiEndpoints, componentTree } = req.body;
+    if (!features || features.length === 0) {
+      return res.status(400).json({ success: false, error: 'Features are required' });
+    }
+
+    const result = await generateStoryFiles(features, prd, databaseSchema, apiEndpoints, componentTree);
     res.json(result);
   } catch (error) {
     console.error('Story generation error:', error);

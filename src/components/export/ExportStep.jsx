@@ -63,6 +63,9 @@ export default function ExportStep() {
     research,
     insights,
     prd,
+    databaseSchema,
+    apiEndpoints,
+    componentTree,
     exportFormat,
     setExportFormat,
     setCurrentStep,
@@ -1030,13 +1033,59 @@ export default function ExportStep() {
                 delay += 100;
               }
 
-              // 2. Download all agent prompts
+              // 2. Download specification documents
+              if (databaseSchema?.content) {
+                setTimeout(() => {
+                  const blob = new Blob([databaseSchema.content], { type: 'text/markdown' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'DATABASE_SCHEMA.md';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }, delay);
+                delay += 100;
+              }
+
+              if (apiEndpoints?.content) {
+                setTimeout(() => {
+                  const blob = new Blob([apiEndpoints.content], { type: 'text/markdown' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'API_ENDPOINTS.md';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }, delay);
+                delay += 100;
+              }
+
+              if (componentTree?.content) {
+                setTimeout(() => {
+                  const blob = new Blob([componentTree.content], { type: 'text/markdown' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'COMPONENT_TREE.md';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }, delay);
+                delay += 100;
+              }
+
+              // 3. Download all agent prompts
               for (const format of formats) {
                 setTimeout(() => handleDownload(format.id), delay);
                 delay += 100;
               }
 
-              // 3. Download design brief (both formats)
+              // 4. Download design brief (both formats)
               if (designBrief) {
                 // JSON
                 setTimeout(() => {
@@ -1069,7 +1118,7 @@ export default function ExportStep() {
                 delay += 100;
               }
 
-              // 4. Download all story files
+              // 5. Download all story files
               if (stories?.stories) {
                 stories.stories.forEach((story) => {
                   setTimeout(() => downloadStory(story), delay);
@@ -1077,7 +1126,7 @@ export default function ExportStep() {
                 });
               }
 
-              // 5. Download all skill files (Claude Agent Skills)
+              // 6. Download all skill files (Claude Agent Skills)
               if (skillFiles && skillFiles.length > 0) {
                 skillFiles.forEach((skill) => {
                   setTimeout(() => {

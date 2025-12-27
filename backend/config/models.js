@@ -63,7 +63,31 @@ export const MODEL_CONFIGS = {
     temperature: 0.7,
   },
 
-  // Step 5: Generate Story Files
+  // NEW: Step 4.1: Generate Database Schema
+  databaseSchema: {
+    primary: 'anthropic/claude-4.5-sonnet-20250929',
+    fallback: 'openai/gpt-5.2',
+    maxTokens: 10000,
+    temperature: 0.7,
+  },
+
+  // NEW: Step 4.2: Generate API Endpoints
+  apiEndpoints: {
+    primary: 'anthropic/claude-4.5-sonnet-20250929',
+    fallback: 'openai/gpt-5.2',
+    maxTokens: 12000,
+    temperature: 0.7,
+  },
+
+  // NEW: Step 4.3: Generate Component Tree
+  componentTree: {
+    primary: 'anthropic/claude-4.5-haiku-20251001',
+    fallback: 'google/gemini-3-flash-preview',
+    maxTokens: 10000,
+    temperature: 0.7,
+  },
+
+  // Step 5: Generate Story Files (now uses specification docs)
   storyFiles: {
     primary: 'anthropic/claude-4.5-sonnet-20250929',
     fallback: 'openai/gpt-5.2',
