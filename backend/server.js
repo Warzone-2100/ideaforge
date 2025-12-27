@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs';
-import { analyzeResearch, generateFeatures, refineFeatures, generatePRD, generateDatabaseSchema, generateApiEndpoints, generateComponentTree, generatePrompt, generateStoryFiles, generateDesignBrief, chatWithExport, generateDesignVariations, expandToHomepage } from './services/aiService.js';
+import { analyzeResearch, generateFeatures, refineFeatures, generatePRD, generateDatabaseSchema, generateApiEndpoints, generateComponentTree, generatePrompt, generateStoryFiles, generateDesignBrief, chatWithExport, generateDesignVariations, expandToHomepage, chatWithDesignBrief, regenerateDesignBrief } from './services/aiService.js';
 import { generateSkillFiles } from './services/skillsService.js';
 
 dotenv.config();
@@ -175,6 +175,38 @@ app.post('/api/design/generate', async (req, res) => {
   }
 });
 
+// Chat interface for design system editing
+app.post('/api/design/chat', async (req, res) => {
+  try {
+    const { message, designBrief } = req.body;
+    if (!message || !designBrief) {
+      return res.status(400).json({ success: false, error: 'Message and design brief are required' });
+    }
+
+    const result = await chatWithDesignBrief(message, designBrief);
+    res.json(result);
+  } catch (error) {
+    console.error('Design chat error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Regenerate design brief based on edited tokens
+app.post('/api/design/regenerate', async (req, res) => {
+  try {
+    const { editedDesignBrief, originalDesignBrief } = req.body;
+    if (!editedDesignBrief) {
+      return res.status(400).json({ success: false, error: 'Edited design brief is required' });
+    }
+
+    const result = await regenerateDesignBrief(editedDesignBrief, originalDesignBrief);
+    res.json(result);
+  } catch (error) {
+    console.error('Design brief regeneration error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Chat/ideation for export refinement
 app.post('/api/export/chat', async (req, res) => {
   try {
@@ -219,12 +251,12 @@ app.post('/api/export/:format', async (req, res) => {
 // Generate design variations (3 models in parallel)
 app.post('/api/design/variations', async (req, res) => {
   try {
-    const { designBrief } = req.body;
+    const { designBrief, pageType } = req.body;
     if (!designBrief) {
       return res.status(400).json({ success: false, error: 'Design brief is required' });
     }
 
-    const result = await generateDesignVariations(designBrief);
+    const result = await generateDesignVariations(designBrief, pageType || 'landing');
     res.json(result);
   } catch (error) {
     console.error('Design variations generation error:', error);
@@ -232,18 +264,18 @@ app.post('/api/design/variations', async (req, res) => {
   }
 });
 
-// Expand variation to full homepage
+// Expand variation to full page
 app.post('/api/design/expand', async (req, res) => {
   try {
-    const { selectedVariation, designBrief } = req.body;
+    const { selectedVariation, designBrief, pageType } = req.body;
     if (!selectedVariation || !designBrief) {
       return res.status(400).json({ success: false, error: 'Selected variation and design brief are required' });
     }
 
-    const result = await expandToHomepage(selectedVariation, designBrief);
+    const result = await expandToHomepage(selectedVariation, designBrief, pageType || 'landing');
     res.json(result);
   } catch (error) {
-    console.error('Homepage expansion error:', error);
+    console.error('Page expansion error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

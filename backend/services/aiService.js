@@ -1646,6 +1646,198 @@ Features: ${(features || []).map(f => f.name).join(', ')}`;
 }
 
 // ============================================================================
+// DESIGN SYSTEM CHAT - Conversational design token editing
+// ============================================================================
+export async function chatWithDesignBrief(message, designBrief) {
+  const systemPrompt = `You are a design system editor AI. Parse user requests to update design tokens in a design brief JSON.
+
+Your job: Understand conversational requests about design changes and return updated design tokens.
+
+SUPPORTED EDITS:
+1. **Color changes**
+   - "make primary darker" → reduce lightness by 15-20%
+   - "more saturated blue" → increase saturation
+   - "use a warmer palette" → shift to oranges/reds
+   - "change background to off-white" → update background color
+
+2. **Typography changes**
+   - "use a serif font" → change fontFamily to serif stack
+   - "bigger headings" → increase heading scale values
+   - "tighter line spacing" → reduce line-height values
+
+3. **Spacing changes**
+   - "more spacious" → increase spacing scale values
+   - "tighter layout" → reduce spacing scale
+   - "bigger padding" → increase spacing unit
+
+4. **Component style changes**
+   - "more rounded corners" → increase border radius values
+   - "softer shadows" → reduce shadow intensity
+   - "remove shadows" → set all shadows to 'none'
+
+5. **Mood/personality changes**
+   - "feel more playful" → suggest brighter colors, rounder corners, looser spacing
+   - "more professional" → suggest neutral colors, cleaner typography, tighter spacing
+
+RESPONSE FORMAT:
+Return JSON with:
+{
+  "changes": [
+    {
+      "path": "designTokens.colors.primary.value",
+      "from": "#6B8AFF",
+      "to": "#4A5FD9",
+      "reasoning": "Reduced lightness by 20% for darker, more saturated blue"
+    }
+  ],
+  "updatedBrief": { ...full updated design brief... },
+  "preview": "Updated primary color from light blue to deeper blue. This gives a more confident, professional feel while maintaining the cool palette."
+}
+
+IMPORTANT:
+- Make SPECIFIC changes based on user request
+- Always include reasoning for each change
+- Update the FULL design brief, not just changed tokens
+- If request is unclear, suggest options in preview
+- Maintain consistency across design tokens (e.g., if changing colors, update all related shades)
+
+CURRENT DESIGN BRIEF:
+${JSON.stringify(designBrief, null, 2)}`;
+
+  const userMessage = message;
+
+  try {
+    const config = MODEL_CONFIGS.refineFeatures; // Use SPEED tier (Gemini 2.5 Flash Lite)
+    const { content, usage } = await callAIWithFallback(systemPrompt, userMessage, config);
+
+    // Parse JSON response
+    let parsedResponse;
+    try {
+      // Try to extract JSON from markdown code blocks if present
+      const jsonMatch = content.match(/\`\`\`json\n([\s\S]*?)\n\`\`\`/) || content.match(/\`\`\`\n([\s\S]*?)\n\`\`\`/);
+      const jsonString = jsonMatch ? jsonMatch[1] : content;
+      parsedResponse = JSON.parse(jsonString);
+    } catch (parseError) {
+      // If JSON parsing fails, return error
+      return {
+        success: false,
+        error: 'Failed to parse AI response as JSON',
+        rawResponse: content,
+      };
+    }
+
+    return {
+      success: true,
+      changes: parsedResponse.changes || [],
+      updatedBrief: parsedResponse.updatedBrief || designBrief,
+      preview: parsedResponse.preview || 'Design system updated.',
+      _meta: {
+        model: usage.model,
+        tokens: usage.totalTokens,
+        cost: usage.cost.total,
+        timestamp: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('Design chat error:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
+// DESIGN BRIEF REGENERATION - Update design brief based on edited tokens
+// ============================================================================
+export async function regenerateDesignBrief(editedDesignBrief, originalDesignBrief = null) {
+  // Detect what changed between original and edited versions
+  let changesSummary = "User has edited design tokens.";
+  if (originalDesignBrief?.designTokens && editedDesignBrief?.designTokens) {
+    const changes = [];
+
+    // Check for color changes
+    const origColors = originalDesignBrief.designTokens.colors || {};
+    const editColors = editedDesignBrief.designTokens.colors || {};
+    for (const key in editColors) {
+      if (origColors[key]?.value !== editColors[key]?.value) {
+        changes.push(`- ${key} color changed from ${origColors[key]?.value} to ${editColors[key]?.value}`);
+      }
+    }
+
+    // Check for typography changes
+    const origTypo = originalDesignBrief.designTokens.typography?.fontFamilies || {};
+    const editTypo = editedDesignBrief.designTokens.typography?.fontFamilies || {};
+    for (const key in editTypo) {
+      if (origTypo[key]?.value !== editTypo[key]?.value) {
+        changes.push(`- ${key} font changed from ${origTypo[key]?.value} to ${editTypo[key]?.value}`);
+      }
+    }
+
+    if (changes.length > 0) {
+      changesSummary = "SPECIFIC CHANGES THE USER MADE:\n" + changes.join('\n');
+    }
+  }
+
+  const systemPrompt = `You are a senior product designer regenerating a design brief to match user-edited design tokens.
+
+${changesSummary}
+
+Your job: Update ALL sections of the design brief to reflect these specific changes while keeping the edited token values exactly as-is.
+
+WHAT YOU MUST UPDATE:
+1. **Visual Identity** - Completely rewrite mood and philosophy to match the NEW color palette and fonts
+2. **Component Patterns** - Update ALL button/input/card styles to use the NEW token values
+3. **Interaction Patterns** - Adjust hover/focus states to match NEW colors
+4. **Design References** - Update product comparisons to match the NEW aesthetic
+5. **Accessibility** - Recalculate contrast ratios for NEW colors
+
+CRITICAL RULES:
+- DO NOT just copy the input - you must ACTIVELY UPDATE descriptions to match the new tokens
+- If primary color changed, completely rewrite the mood description
+- Update component pattern hex values to use the new color tokens
+- Update ALL references to colors, fonts, sizes in component patterns
+- Be specific about the aesthetic shift (e.g., "from professional blue to energetic purple")
+
+EDITED DESIGN BRIEF TO REGENERATE:
+${JSON.stringify(editedDesignBrief, null, 2)}
+
+Respond ONLY with a complete JSON design brief that has been FULLY UPDATED to reflect the new tokens.`;
+
+  const userMessage = `Regenerate this design brief with ALL sections updated to match the edited tokens. This is not a copy job - you must actively update visual identity, component patterns, and references to reflect the new aesthetic created by the token changes.`;
+
+  try {
+    const config = MODEL_CONFIGS.prd; // Use MAX tier for critical specifications
+    const { content, usage } = await callAIWithFallback(systemPrompt, userMessage, config);
+
+    // Parse JSON response
+    let parsedBrief;
+    try {
+      const jsonMatch = content.match(/\`\`\`json\n([\s\S]*?)\n\`\`\`/) || content.match(/\`\`\`\n([\s\S]*?)\n\`\`\`/);
+      const jsonString = jsonMatch ? jsonMatch[1] : content;
+      parsedBrief = JSON.parse(jsonString);
+    } catch (parseError) {
+      return {
+        success: false,
+        error: 'Failed to parse regenerated design brief as JSON',
+        rawResponse: content,
+      };
+    }
+
+    return {
+      success: true,
+      designBrief: parsedBrief,
+      _meta: {
+        model: usage.model,
+        tokens: usage.totalTokens,
+        cost: usage.cost.total,
+        timestamp: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('Design brief regeneration error:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
 // PROMPT GENERATION - Agent-specific coding instructions
 // ============================================================================
 export async function generatePrompt(format, research, insights, features, prd, designBrief, options = {}) {
@@ -3497,11 +3689,18 @@ ${(prd || '').substring(0, 4000)}
 // ============================================================================
 // DESIGN VARIATIONS - Multi-model UI component generation
 // ============================================================================
-export async function generateDesignVariations(designBrief, options = {}) {
-  const systemPrompt = `You are an expert UI/UX designer creating a self-contained, production-ready component.
+export async function generateDesignVariations(designBrief, pageType = 'landing', options = {}) {
+  // Page-specific component prompts
+  const pageTypePrompts = {
+    landing: 'Generate a HERO SECTION with headline, subheadline, CTA buttons, and visual element. Focus on conversion and impact.',
+    dashboard: 'Generate a DATA DASHBOARD component with cards, charts placeholder, and navigation. Focus on information density and scannability.',
+    settings: 'Generate a SETTINGS FORM section with form controls, toggles, and save/cancel actions. Focus on clarity and safety.',
+    profile: 'Generate a PROFILE HEADER with avatar, user info, stats cards, and action buttons. Focus on identity and social elements.',
+  };
 
-TASK: Generate HTML/CSS/JS for a SINGLE KEY COMPONENT from the design brief.
-Focus on creating ONE visually distinctive element (like a hero section, pricing card, or feature showcase).
+  const systemPrompt = `You are an expert UI/UX designer creating a self-contained, production-ready ${pageType} component.
+
+TASK: ${pageTypePrompts[pageType] || pageTypePrompts.landing}
 
 REQUIREMENTS:
 1. **Self-contained**: All CSS in a <style> tag, all JS in <script> tags
@@ -3510,6 +3709,7 @@ REQUIREMENTS:
 4. **Material metaphors only**: NO artist names, NO copyrighted references
 5. **Responsive**: Mobile-first, works 320px-2560px
 6. **Interactive**: Include subtle hover effects, transitions where appropriate
+7. **Page-appropriate**: Design specifically for a ${pageType} page context
 
 OUTPUT FORMAT: Return a complete HTML document with inline styles and scripts.
 Start with <!DOCTYPE html> and include everything in one file.
@@ -3518,7 +3718,9 @@ NO markdown formatting, NO explanations, JUST the HTML.`;
   const userMessage = `Design Brief:
 ${JSON.stringify(designBrief, null, 2)}
 
-Create a distinctive, production-ready component that embodies this design system.`;
+Page Type: ${pageType}
+
+Create a distinctive, production-ready ${pageType} component that embodies this design system.`;
 
   const config = MODEL_CONFIGS.designVariations;
   const models = config.models;
@@ -3617,22 +3819,72 @@ Create a distinctive, production-ready component that embodies this design syste
 }
 
 // ============================================================================
-// EXPAND TO HOMEPAGE - Transform component into full 8-section homepage
+// EXPAND TO FULL PAGE - Transform component into complete page
 // ============================================================================
-export async function expandToHomepage(selectedVariation, designBrief, options = {}) {
-  const systemPrompt = `You are a senior frontend developer expanding a component into a complete homepage.
+export async function expandToHomepage(selectedVariation, designBrief, pageType = 'landing', options = {}) {
+  // Page-specific section structures
+  const pageSections = {
+    landing: {
+      count: 8,
+      sections: [
+        '**Hero**: Attention-grabbing introduction (use/adapt the selected component)',
+        '**Features**: 3-6 key product features with icons/images',
+        '**How It Works**: Step-by-step process (numbered or visual)',
+        '**Social Proof**: Testimonials or customer logos',
+        '**Pricing**: Tiered pricing table (if applicable) or value proposition',
+        '**FAQ**: Common questions with expandable answers',
+        '**CTA**: Final call-to-action with conversion focus',
+        '**Footer**: Links, legal, social media',
+      ],
+      context: 'marketing homepage focused on conversion',
+    },
+    dashboard: {
+      count: 6,
+      sections: [
+        '**Header**: Navigation with logo, search, notifications, user menu',
+        '**Sidebar**: Main navigation menu with sections/categories',
+        '**Main Content**: Overview cards, stats, recent activity (use/adapt selected component)',
+        '**Data Visualization**: Charts, graphs, analytics section',
+        '**Tables**: Data tables with filtering and sorting',
+        '**Footer/Actions**: Quick actions, help links',
+      ],
+      context: 'application dashboard for data visualization and navigation',
+    },
+    settings: {
+      count: 5,
+      sections: [
+        '**Header**: Settings title with breadcrumb/back button',
+        '**Sidebar Navigation**: Settings categories (Profile, Account, Privacy, etc)',
+        '**Form Sections**: Multiple sections with form controls (use/adapt selected component)',
+        '**Danger Zone**: Delete account/critical actions section',
+        '**Save Actions**: Sticky footer with Save/Cancel buttons and status',
+      ],
+      context: 'settings page for user preferences and configuration',
+    },
+    profile: {
+      count: 6,
+      sections: [
+        '**Header**: Profile banner with avatar, name, bio (use/adapt selected component)',
+        '**Navigation Tabs**: About, Activity, Settings tabs',
+        '**Info Cards**: Personal information, stats, achievements',
+        '**Activity Feed**: Recent actions, posts, contributions',
+        '**Social Section**: Connections, followers, following',
+        '**Footer**: Additional info, links',
+      ],
+      context: 'user profile page for identity and activity display',
+    },
+  };
 
-TASK: Transform the provided component into a FULL 8-SECTION HOMEPAGE while maintaining design consistency.
+  const pageConfig = pageSections[pageType] || pageSections.landing;
+
+  const systemPrompt = `You are a senior frontend developer expanding a component into a complete ${pageType} page.
+
+TASK: Transform the provided component into a FULL ${pageConfig.count}-SECTION ${pageType.toUpperCase()} PAGE while maintaining design consistency.
 
 SECTIONS TO INCLUDE:
-1. **Hero**: Attention-grabbing introduction (use/adapt the selected component)
-2. **Features**: 3-6 key product features with icons/images
-3. **How It Works**: Step-by-step process (numbered or visual)
-4. **Social Proof**: Testimonials or customer logos
-5. **Pricing**: Tiered pricing table (if applicable) or value proposition
-6. **FAQ**: Common questions with expandable answers
-7. **CTA**: Final call-to-action with conversion focus
-8. **Footer**: Links, legal, social media
+${pageConfig.sections.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+CONTEXT: This is a ${pageConfig.context}.
 
 REQUIREMENTS:
 1. **Design Consistency**: Maintain exact colors, typography, spacing from the component
@@ -3640,7 +3892,8 @@ REQUIREMENTS:
 3. **Semantic HTML**: Proper heading hierarchy, ARIA labels
 4. **Self-contained**: All CSS in <style> tag, JS in <script> tags
 5. **Production-ready**: No placeholders, realistic copy based on design brief
-6. **Interactive**: Smooth scrolling, FAQ toggles, mobile menu (if header included)
+6. **Interactive**: Smooth transitions, interactive elements appropriate for ${pageType} pages
+7. **Page-appropriate**: Design specifically for ${pageType} page patterns and user expectations
 
 OUTPUT FORMAT: Return a complete HTML document with all sections, inline styles, and scripts.
 Start with <!DOCTYPE html> and include everything in one file.
@@ -3658,7 +3911,9 @@ ${selectedVariation.js}
 Design Brief:
 ${JSON.stringify(designBrief, null, 2)}
 
-Expand this component into a complete, production-ready homepage with all 8 sections. Maintain the design system perfectly.`;
+Page Type: ${pageType}
+
+Expand this component into a complete, production-ready ${pageType} page with all ${pageConfig.count} sections. Maintain the design system perfectly.`;
 
   try {
     const config = MODEL_CONFIGS.expandHomepage;

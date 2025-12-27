@@ -257,6 +257,52 @@ class AIService {
     }
   }
 
+  async chatWithDesignBrief(message, designBrief) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/design/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, designBrief }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return trackUsage('designChat', data);
+    } catch (error) {
+      console.error('Design chat error:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  async regenerateDesignBrief(editedDesignBrief, originalDesignBrief = null) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/design/regenerate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ editedDesignBrief, originalDesignBrief }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return trackUsage('designBrief', data);
+    } catch (error) {
+      console.error('Design brief regeneration error:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
   async chatExport(message, context) {
     try {
       const response = await fetch(`${API_BASE_URL}/export/chat`, {
@@ -836,12 +882,12 @@ ${(f.edgeCases || ['Handle empty state', 'Handle loading state', 'Handle error s
   // ============================================================================
   // DESIGN VARIATIONS - Multi-model UI component generation
   // ============================================================================
-  async generateDesignVariations(designBrief) {
+  async generateDesignVariations(designBrief, pageType = 'landing') {
     try {
       const response = await fetch(`${API_BASE_URL}/design/variations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ designBrief }),
+        body: JSON.stringify({ designBrief, pageType }),
       });
 
       if (!response.ok) {
@@ -869,12 +915,12 @@ ${(f.edgeCases || ['Handle empty state', 'Handle loading state', 'Handle error s
   // ============================================================================
   // EXPAND TO HOMEPAGE - Transform component into full homepage
   // ============================================================================
-  async expandToHomepage(selectedVariation, designBrief) {
+  async expandToHomepage(selectedVariation, designBrief, pageType = 'landing') {
     try {
       const response = await fetch(`${API_BASE_URL}/design/expand`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ selectedVariation, designBrief }),
+        body: JSON.stringify({ selectedVariation, designBrief, pageType }),
       });
 
       if (!response.ok) {

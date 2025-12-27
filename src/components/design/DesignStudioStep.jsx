@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   ChevronRight,
@@ -10,11 +10,14 @@ import {
   Check,
   Download,
   Eye,
+  Edit,
 } from 'lucide-react';
 import useAppStore from '../../stores/useAppStore';
 import { aiService } from '../../services/aiService';
 import DesignVariationsStep from './DesignVariationsStep';
 import HomepagePreview from './HomepagePreview';
+import PageSelector from './PageSelector';
+import DesignSystemEditor from './DesignSystemEditor';
 
 const paletteOptions = [
   { id: 'warm', label: 'Warm', description: 'Oranges, reds, yellows', colors: ['#FF6B6B', '#FFD93D', '#FFA500'] },
@@ -55,13 +58,36 @@ export default function DesignStudioStep() {
     setDesignPreferences,
     designVariations,
     setDesignBrief,
+    setSharedPreferences,
+    getEffectivePreferences,
+    toggleBriefEditor,
   } = useAppStore();
 
-  const [selectedPalette, setSelectedPalette] = useState(designPreferences.palette || null);
-  const [selectedStyle, setSelectedStyle] = useState(designPreferences.style || null);
-  const [selectedReferences, setSelectedReferences] = useState(designPreferences.references || []);
-  const [selectedMoods, setSelectedMoods] = useState(designPreferences.mood || []);
+  // Handle both old and new state structures (for localStorage migration)
+  const currentPage = designVariations?.currentPage || 'landing';
+  const sharedPreferences = designVariations?.sharedPreferences || {};
+  const pages = designVariations?.pages || {};
+  const defaultPageData = { variations: [], selected: null, fullPage: null, isGenerating: false, isExpanding: false, overridePreferences: null };
+  const currentPageData = pages[currentPage] || defaultPageData;
+  const effectivePreferences = getEffectivePreferences ? getEffectivePreferences(currentPage) : sharedPreferences;
+  const [usePageOverride, setUsePageOverride] = useState(!!currentPageData?.overridePreferences);
+
+  const [selectedPalette, setSelectedPalette] = useState(effectivePreferences.palette || null);
+  const [selectedStyle, setSelectedStyle] = useState(effectivePreferences.style || null);
+  const [selectedReferences, setSelectedReferences] = useState(effectivePreferences.references || []);
+  const [selectedMoods, setSelectedMoods] = useState(effectivePreferences.mood || []);
   const [customPalette, setCustomPalette] = useState('');
+
+  // Update form when page changes
+  useEffect(() => {
+    const prefs = getEffectivePreferences(currentPage);
+    setSelectedPalette(prefs.palette || null);
+    setSelectedStyle(prefs.style || null);
+    setSelectedReferences(prefs.references || []);
+    setSelectedMoods(prefs.mood || []);
+    setCustomPalette('');
+    setUsePageOverride(!!currentPageData?.overridePreferences);
+  }, [currentPage]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -88,13 +114,23 @@ export default function DesignStudioStep() {
   };
 
   const handleGenerateDesignBrief = async () => {
-    // Save preferences to store
-    setDesignPreferences({
+    const preferences = {
       palette: customPalette || selectedPalette,
       style: selectedStyle,
       references: selectedReferences,
       mood: selectedMoods,
-    });
+    };
+
+    // Save to shared preferences or page override
+    if (usePageOverride) {
+      // Save as page-specific override
+      setDesignPreferences(preferences);
+    } else {
+      // Save to shared preferences
+      setSharedPreferences(preferences);
+      // Also update old designPreferences for backward compatibility
+      setDesignPreferences(preferences);
+    }
 
     setLoading(true);
     setError(null);
@@ -105,12 +141,7 @@ export default function DesignStudioStep() {
         research.content,
         insights,
         acceptedFeatures,
-        {
-          palette: customPalette || selectedPalette,
-          style: selectedStyle,
-          references: selectedReferences,
-          mood: selectedMoods,
-        }
+        preferences
       );
 
       if (result.success) {
@@ -175,6 +206,11 @@ export default function DesignStudioStep() {
           </div>
         )}
 
+        {/* Page Selector */}
+        {designVariations.designBrief && (
+          <PageSelector />
+        )}
+
         {/* Design Preferences Form */}
         {showPreferences && (
           <div className="mb-8 bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-6">
@@ -182,6 +218,11 @@ export default function DesignStudioStep() {
               <h2 className="text-xl font-semibold text-white flex items-center gap-2">
                 <Palette className="w-5 h-5 text-indigo-400" />
                 Design Preferences
+                {designVariations.designBrief && (
+                  <span className="text-sm font-normal text-zinc-500">
+                    ({usePageOverride ? `Custom for ${currentPage}` : 'Shared across all pages'})
+                  </span>
+                )}
               </h2>
               {designVariations.designBrief && (
                 <button
@@ -192,6 +233,28 @@ export default function DesignStudioStep() {
                 </button>
               )}
             </div>
+
+            {/* Use Shared vs Custom Toggle */}
+            {designVariations.designBrief && (
+              <div className="mb-6 p-4 bg-zinc-950/50 rounded-lg">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={usePageOverride}
+                    onChange={(e) => setUsePageOverride(e.target.checked)}
+                    className="w-4 h-4 rounded border-zinc-700 bg-zinc-900 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-0"
+                  />
+                  <div>
+                    <div className="text-sm font-medium text-white">
+                      Customize for this page type
+                    </div>
+                    <div className="text-xs text-zinc-500">
+                      Override shared preferences for {currentPage} page only
+                    </div>
+                  </div>
+                </label>
+              </div>
+            )}
 
             {/* Color Palette */}
             <div className="mb-6">
@@ -351,6 +414,13 @@ export default function DesignStudioStep() {
               </h2>
               <div className="flex gap-2">
                 <button
+                  onClick={toggleBriefEditor}
+                  className="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg transition-colors text-sm flex items-center gap-2"
+                >
+                  <Edit className="w-4 h-4" />
+                  Edit Design System
+                </button>
+                <button
                   onClick={() => {
                     const content = JSON.stringify(designVariations.designBrief, null, 2);
                     navigator.clipboard.writeText(content);
@@ -480,6 +550,9 @@ export default function DesignStudioStep() {
           </div>
         )}
       </div>
+
+      {/* Design System Editor Modal */}
+      {designVariations.isEditingBrief && <DesignSystemEditor />}
     </div>
   );
 }
