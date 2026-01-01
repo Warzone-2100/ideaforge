@@ -1279,6 +1279,44 @@ ${(f.edgeCases || ['Handle empty state', 'Handle loading state', 'Handle error s
     }
   }
 
+  // ============================================================================
+  // MILESTONE EXPORT - Generate structured handoff for coding agents
+  // ============================================================================
+  async generateMilestoneExport(research, insights, features, prd, specifications = {}) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/export/milestone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          research,
+          insights,
+          features,
+          prd,
+          specifications,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (data._meta) {
+        trackUsage('milestoneExport', data);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Milestone export generation error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to generate milestone export',
+      };
+    }
+  }
+
   // Mock fallback for template content adaptation
   mockAdaptTemplateContent(templateSlots, prdContext) {
     const productName = prdContext.features?.[0]?.name || 'ProductName';

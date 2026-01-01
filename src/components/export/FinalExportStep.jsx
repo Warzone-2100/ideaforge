@@ -11,13 +11,19 @@ import {
   Code,
   Package,
   Loader2,
+  Rocket,
+  ListChecks,
+  HelpCircle,
 } from 'lucide-react';
 import useAppStore from '../../stores/useAppStore';
-import { generateWorkflowZip, formatFileSize, getExportSummary } from '../../utils/exportUtils';
+import { generateWorkflowZip, generateMilestoneZip, formatFileSize, getExportSummary } from '../../utils/exportUtils';
+import { aiService } from '../../services/aiService';
 
 export default function FinalExportStep() {
   const {
     research,
+    insights,
+    features,
     prd,
     databaseSchema,
     apiEndpoints,
@@ -26,11 +32,15 @@ export default function FinalExportStep() {
     designVariations,
     storyFiles,
     setCurrentStep,
+    getAcceptedFeatures,
   } = useAppStore();
 
   const [downloading, setDownloading] = useState(false);
   const [downloadingZip, setDownloadingZip] = useState(false);
   const [zipResult, setZipResult] = useState(null);
+  const [generatingMilestone, setGeneratingMilestone] = useState(false);
+  const [milestoneResult, setMilestoneResult] = useState(null);
+  const [milestoneError, setMilestoneError] = useState(null);
 
   const handleDownloadZip = async () => {
     setDownloadingZip(true);
@@ -140,6 +150,55 @@ export default function FinalExportStep() {
       setDownloading(false);
     }
   };
+
+  const handleMilestoneExport = async () => {
+    setGeneratingMilestone(true);
+    setMilestoneResult(null);
+    setMilestoneError(null);
+
+    try {
+      const acceptedFeatures = getAcceptedFeatures();
+
+      if (acceptedFeatures.length === 0) {
+        throw new Error('No accepted features found. Please accept at least one feature to generate a milestone export.');
+      }
+
+      // Call the API to generate milestone export content
+      const result = await aiService.generateMilestoneExport(
+        research.content,
+        insights,
+        acceptedFeatures,
+        prd.content,
+        {
+          databaseSchema: databaseSchema?.content,
+          apiEndpoints: apiEndpoints?.content,
+          componentTree: componentTree?.content,
+        }
+      );
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to generate milestone export');
+      }
+
+      // Generate and download the ZIP
+      const zipResult = await generateMilestoneZip({
+        ...result.export,
+        features: acceptedFeatures,
+        designBrief: designVariations?.designBrief,
+      });
+
+      setMilestoneResult(zipResult);
+      setTimeout(() => setMilestoneResult(null), 8000);
+    } catch (err) {
+      console.error('Milestone export error:', err);
+      setMilestoneError(err.message);
+      setTimeout(() => setMilestoneError(null), 8000);
+    } finally {
+      setGeneratingMilestone(false);
+    }
+  };
+
+  const acceptedFeatureCount = getAcceptedFeatures().length;
 
   const exportSummary = [
     {
@@ -273,7 +332,100 @@ export default function FinalExportStep() {
           </div>
         </div>
 
-        {/* Download Buttons */}
+        {/* Milestone Export Section */}
+        <div className="mb-8 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/30 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-indigo-500/20 rounded-lg">
+              <Rocket className="w-5 h-5 text-indigo-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-white">Milestone Export</h2>
+              <p className="text-sm text-zinc-400">
+                AI-generated implementation plan for coding agents
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="flex items-start gap-2 text-sm">
+              <ListChecks className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+              <div>
+                <span className="text-zinc-300">Numbered Milestones</span>
+                <p className="text-zinc-500 text-xs">01-foundation, 02-shell, 03-feature...</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 text-sm">
+              <Code className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
+              <div>
+                <span className="text-zinc-300">Ready-to-Use Prompts</span>
+                <p className="text-zinc-500 text-xs">One-shot & incremental modes</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 text-sm">
+              <HelpCircle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+              <div>
+                <span className="text-zinc-300">Clarifying Questions</span>
+                <p className="text-zinc-500 text-xs">Auth, tech stack, user modeling</p>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleMilestoneExport}
+            disabled={generatingMilestone || acceptedFeatureCount === 0}
+            className="w-full px-6 py-4 bg-indigo-500 hover:bg-indigo-400 disabled:bg-zinc-800 disabled:text-zinc-500 text-white rounded-lg transition-colors flex items-center justify-center gap-2 text-lg font-medium shadow-lg shadow-indigo-500/20"
+          >
+            {generatingMilestone ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Generating milestone export...
+              </>
+            ) : (
+              <>
+                <Rocket className="w-5 h-5" />
+                Generate Milestone Export ({acceptedFeatureCount} features)
+              </>
+            )}
+          </button>
+
+          {acceptedFeatureCount === 0 && (
+            <p className="text-amber-400 text-sm mt-2 text-center">
+              Accept features in the Features step to enable milestone export
+            </p>
+          )}
+
+          {milestoneResult && (
+            <div className="mt-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4 flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <h3 className="text-emerald-400 font-medium mb-1">Milestone Export Downloaded!</h3>
+                <p className="text-emerald-300 text-sm">
+                  {milestoneResult.filename} ({formatFileSize(milestoneResult.size)})
+                </p>
+                <p className="text-zinc-400 text-xs mt-2">
+                  Copy the prompts/ folder content to your coding agent to start implementation
+                </p>
+              </div>
+            </div>
+          )}
+
+          {milestoneError && (
+            <div className="mt-4 bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <h3 className="text-red-400 font-medium mb-1">Export Failed</h3>
+                <p className="text-red-300 text-sm">{milestoneError}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Standard Export */}
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-white mb-1">Standard Export</h2>
+          <p className="text-sm text-zinc-400">Download all generated files in the original format</p>
+        </div>
+
         {totalFiles > 0 ? (
           <div className="space-y-4">
             {/* Primary: ZIP Download */}

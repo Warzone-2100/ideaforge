@@ -145,6 +145,212 @@ ${designVariations.homepage.js || '// No JavaScript'}
 }
 
 /**
+ * Generates a milestone-based export ZIP for structured handoff to coding agents
+ *
+ * Structure:
+ * product-plan/
+ * ├── product-overview.md
+ * ├── prompts/
+ * │   ├── one-shot-prompt.md
+ * │   └── incremental-prompt.md
+ * ├── instructions/
+ * │   ├── one-shot-instructions.md
+ * │   └── incremental/
+ * │       ├── 01-foundation.md
+ * │       ├── 02-shell.md
+ * │       └── 03-[feature].md, 04-[feature].md, ...
+ * ├── design-system/
+ * │   ├── tokens.css
+ * │   └── tailwind-colors.md
+ * ├── data-model/
+ * │   ├── README.md
+ * │   └── types.ts
+ * └── sections/
+ *     └── [feature-id]/
+ *         ├── README.md
+ *         ├── tests.md
+ *         └── sample-data.json
+ */
+export async function generateMilestoneZip(exportData) {
+  const {
+    productOverview,
+    milestones,
+    prompts,
+    tests,
+    clarifyingQuestions,
+    features = [],
+    designBrief = null,
+  } = exportData;
+
+  const zip = new JSZip();
+  const timestamp = new Date().toISOString().split('T')[0];
+
+  // ROOT: Product Overview
+  if (productOverview) {
+    zip.file('product-plan/product-overview.md', productOverview);
+  }
+
+  // PROMPTS FOLDER
+  const promptsFolder = zip.folder('product-plan/prompts');
+  if (prompts?.oneShot) {
+    promptsFolder.file('one-shot-prompt.md', prompts.oneShot);
+  }
+  if (prompts?.incremental) {
+    promptsFolder.file('incremental-prompt.md', prompts.incremental);
+  }
+
+  // INSTRUCTIONS FOLDER
+  const instructionsFolder = zip.folder('product-plan/instructions');
+
+  // One-shot instructions (all milestones combined)
+  if (milestones?.foundation && milestones?.features?.length > 0) {
+    let oneShotContent = '# One-Shot Implementation Instructions\n\n';
+    oneShotContent += '## Foundation\n\n' + milestones.foundation + '\n\n';
+    oneShotContent += '---\n\n## Features\n\n';
+    milestones.features.forEach((f, i) => {
+      oneShotContent += `### ${i + 3}. ${f.title || `Feature ${i + 1}`}\n\n${f.content}\n\n`;
+    });
+    instructionsFolder.file('one-shot-instructions.md', oneShotContent);
+  }
+
+  // Incremental instructions
+  const incrementalFolder = instructionsFolder.folder('incremental');
+  if (milestones?.foundation) {
+    incrementalFolder.file('01-foundation.md', milestones.foundation);
+  }
+
+  // Shell milestone (placeholder - could be expanded)
+  incrementalFolder.file('02-shell.md', `# Shell Implementation
+
+## Overview
+Set up the application shell with navigation and layout.
+
+## Tasks
+1. Create the main layout wrapper component
+2. Implement navigation sidebar/header
+3. Set up routing structure
+4. Add user menu component
+5. Implement responsive breakpoints
+
+## Acceptance Criteria
+- Navigation works on all screen sizes
+- Routes are properly configured
+- User can navigate between sections
+`);
+
+  // Feature milestones
+  if (milestones?.features?.length > 0) {
+    milestones.features.forEach((feature, index) => {
+      const num = String(index + 3).padStart(2, '0');
+      const slug = (feature.title || `feature-${index + 1}`)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .substring(0, 30);
+      incrementalFolder.file(`${num}-${slug}.md`, feature.content);
+    });
+  }
+
+  // DESIGN SYSTEM FOLDER
+  if (designBrief) {
+    const designFolder = zip.folder('product-plan/design-system');
+
+    // Generate CSS tokens from design brief
+    const tokens = designBrief.designTokens || designBrief;
+    let cssTokens = ':root {\n';
+    if (tokens.colors) {
+      Object.entries(tokens.colors).forEach(([key, val]) => {
+        const value = typeof val === 'object' ? val.value : val;
+        cssTokens += `  --color-${key}: ${value};\n`;
+      });
+    }
+    cssTokens += '}\n';
+    designFolder.file('tokens.css', cssTokens);
+
+    // Tailwind colors guide
+    let tailwindGuide = '# Tailwind Color Configuration\n\n';
+    tailwindGuide += '```js\n// tailwind.config.js\nmodule.exports = {\n  theme: {\n    extend: {\n      colors: {\n';
+    if (tokens.colors) {
+      Object.entries(tokens.colors).forEach(([key, val]) => {
+        const value = typeof val === 'object' ? val.value : val;
+        tailwindGuide += `        '${key}': '${value}',\n`;
+      });
+    }
+    tailwindGuide += '      },\n    },\n  },\n};\n```\n';
+    designFolder.file('tailwind-colors.md', tailwindGuide);
+  }
+
+  // SECTIONS FOLDER (per-feature assets)
+  if (features.length > 0 && tests?.length > 0) {
+    const sectionsFolder = zip.folder('product-plan/sections');
+
+    features.forEach((feature, index) => {
+      const slug = (feature.name || `feature-${index + 1}`)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .substring(0, 30);
+
+      const featureFolder = sectionsFolder.folder(slug);
+
+      // README
+      featureFolder.file('README.md', `# ${feature.name}
+
+## Description
+${feature.description || 'No description provided.'}
+
+## Priority
+${feature.priority || 'medium'}
+
+## User Story
+${feature.userStory || `As a user, I want to ${feature.name.toLowerCase()}`}
+
+## Acceptance Criteria
+${(feature.acceptanceCriteria || ['Feature works as described']).map(c => `- ${c}`).join('\n')}
+`);
+
+      // Tests
+      if (tests[index]) {
+        featureFolder.file('tests.md', tests[index]);
+      }
+
+      // Sample data placeholder
+      featureFolder.file('sample-data.json', JSON.stringify({
+        feature: feature.name,
+        sampleItems: [],
+        note: 'Add sample data for testing this feature'
+      }, null, 2));
+    });
+  }
+
+  // CLARIFYING QUESTIONS
+  if (clarifyingQuestions) {
+    zip.file('product-plan/CLARIFYING_QUESTIONS.md', clarifyingQuestions);
+  }
+
+  // Generate ZIP
+  const blob = await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 9 },
+  });
+
+  // Download
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `product-plan-${timestamp}.zip`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  return {
+    success: true,
+    filename: `product-plan-${timestamp}.zip`,
+    size: blob.size,
+  };
+}
+
+/**
  * Helper to format file size
  */
 export function formatFileSize(bytes) {
