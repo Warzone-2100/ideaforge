@@ -302,6 +302,20 @@ This means the LLM has full context at every step.
 | POST | `/templates/generate` | Generate from template | `{ templateAnalysis, designBrief, pageType }` |
 | POST | `/templates/adapt` | Adapt content to PRD | `{ templateSlots, prdContext, designIntent }` |
 
+### Milestone-Based Export (Design OS Inspired)
+| Method | Endpoint | Purpose | Request Body |
+|--------|----------|---------|--------------|
+| POST | `/export/milestone` | Generate complete milestone export | `{ research, insights, features, prd, specifications }` |
+
+**Returns:**
+- `productOverview` - Product summary and context
+- `milestones.foundation` - 01-foundation.md (setup, tokens, types)
+- `milestones.features[]` - One milestone per feature (03-feature-name.md)
+- `prompts.oneShot` - Full implementation prompt
+- `prompts.incremental` - Section-by-section template
+- `tests[]` - Test instructions per feature
+- `clarifyingQuestions` - Questions to ask before implementing
+
 ---
 
 ## LLM Configuration
@@ -491,6 +505,65 @@ When generating from a template:
 
 ---
 
+## Milestone-Based Export System
+
+Inspired by Design OS, IdeaForge now generates incremental implementation packages.
+
+### Two Export Modes
+
+**One-Shot Mode:**
+- Single prompt for full implementation
+- Agent asks clarifying questions first
+- Implements all milestones in sequence
+- Best for: Smaller projects, experienced developers
+
+**Incremental Mode:**
+- Implement one milestone at a time
+- Review progress after each milestone
+- Catch issues early
+- Best for: Larger projects, learning, teams
+
+### Milestone Structure
+
+```
+product-plan/
+├── product-overview.md           # Always provide for context
+├── milestones/
+│   ├── 01-foundation.md         # Design tokens, types, routing
+│   ├── 02-shell.md              # Application shell (TBD)
+│   ├── 03-[feature-1].md        # First feature
+│   ├── 04-[feature-2].md        # Second feature
+│   └── ...
+├── prompts/
+│   ├── one-shot-prompt.md       # Full implementation prompt
+│   └── incremental-prompt.md    # Section-by-section template
+├── tests/
+│   ├── [feature-1]-tests.md     # TDD specs for feature 1
+│   └── [feature-2]-tests.md     # TDD specs for feature 2
+└── clarifying-questions.md      # Questions to ask before implementing
+```
+
+### Clarifying Questions
+
+Before implementing, the AI agent asks about:
+1. **Authentication** - Login method, OAuth providers, user roles
+2. **User Modeling** - Single-user vs teams, data scoping
+3. **Tech Stack** - Framework, database, hosting preference
+4. **Integrations** - Payment, email, file storage
+5. **Existing Code** - Patterns, component libraries, conventions
+6. **Scope** - MVP features, what to defer
+
+### Test Instructions (TDD)
+
+Each feature includes framework-agnostic test instructions:
+- **User Flow Tests** - Happy path for create/edit/delete
+- **Empty State Tests** - Behavior when no data exists
+- **Error State Tests** - Network errors, validation errors
+- **Acceptance Criteria Verification** - Tests for each AC
+- **Edge Cases** - From feature definition
+
+---
+
 ## Key Design Decisions
 
 ### Why Zustand?
@@ -667,6 +740,19 @@ From `index.json`:
 ## Changelog
 
 ### 2025-12-31
+- **🎯 Milestone-Based Export System (Design OS Inspired)**
+  - **Two Export Modes**: One-shot (full implementation) vs Incremental (milestone-by-milestone)
+  - **Numbered Milestones**: 01-foundation → 02-shell → 03-[feature]...
+  - **Clarifying Questions**: Prompts ask about auth, tech stack, user modeling before implementing
+  - **TDD Test Instructions**: Framework-agnostic test specs for each feature
+    - User flow tests (happy path)
+    - Empty state tests
+    - Error state tests
+    - Acceptance criteria verification
+  - **New Endpoint**: `POST /api/export/milestone`
+  - **New Function**: `generateMilestoneExport()` in aiService.js
+  - **Inspired By**: [Design OS](https://buildermethods.com/design-os) by Brian Casel
+
 - **📸 Template Inspiration System: Phase 1 Complete**
   - **Screenshot Upload**: Drag & drop upload (PNG, JPG, max 5MB) with image preview and compression
   - **Vision Analysis**: AI extracts layout, components, colors, typography, spacing, mood, UI patterns, grid system

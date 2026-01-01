@@ -4913,3 +4913,746 @@ RULES:
     };
   }
 }
+
+// ============================================================================
+// MILESTONE-BASED EXPORT - Design OS inspired incremental implementation
+// ============================================================================
+
+/**
+ * Generates a complete milestone-based export package inspired by Design OS
+ * Includes: product overview, numbered milestones, prompts, and test instructions
+ */
+export async function generateMilestoneExport(research, insights, features, prd, specifications = {}) {
+  console.log('[MILESTONE] Starting milestone export generation');
+
+  const { databaseSchema, apiEndpoints, componentTree } = specifications;
+
+  // Sort features by priority and dependencies
+  const sortedFeatures = [...features].sort((a, b) => {
+    const priorityOrder = { mvp: 0, high: 1, medium: 2, low: 3 };
+    return (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3);
+  });
+
+  // Generate product overview
+  const productOverview = generateProductOverview(research, insights, sortedFeatures, prd);
+
+  // Generate foundation milestone
+  const foundationMilestone = generateFoundationMilestone(sortedFeatures, databaseSchema, apiEndpoints);
+
+  // Generate feature milestones (one per feature)
+  const featureMilestones = sortedFeatures.map((feature, index) =>
+    generateFeatureMilestone(feature, index + 3, sortedFeatures, componentTree) // Start at 03
+  );
+
+  // Generate prompts
+  const oneShotPrompt = generateOneShotPrompt(sortedFeatures);
+  const incrementalPrompt = generateIncrementalPrompt();
+
+  // Generate test instructions for each feature
+  const testInstructions = sortedFeatures.map(feature =>
+    generateTestInstructions(feature)
+  );
+
+  // Generate clarifying questions
+  const clarifyingQuestions = generateClarifyingQuestions(sortedFeatures);
+
+  return {
+    success: true,
+    export: {
+      productOverview,
+      milestones: {
+        foundation: foundationMilestone,
+        features: featureMilestones,
+      },
+      prompts: {
+        oneShot: oneShotPrompt,
+        incremental: incrementalPrompt,
+      },
+      tests: testInstructions,
+      clarifyingQuestions,
+    },
+    _meta: {
+      featureCount: sortedFeatures.length,
+      milestoneCount: featureMilestones.length + 2, // foundation + shell + features
+      timestamp: new Date().toISOString(),
+    },
+  };
+}
+
+function generateProductOverview(research, insights, features, prd) {
+  const mvpFeatures = features.filter(f => f.priority === 'mvp');
+  const deferredFeatures = features.filter(f => f.priority === 'low');
+
+  return `# Product Overview
+
+## What We're Building
+
+${prd ? prd.substring(0, 500) : 'A product designed to solve user pain points identified in research.'}
+
+## Problem Statement
+
+${insights?.painPoints?.slice(0, 3).map(p => `- ${p}`).join('\n') || 'Key pain points from user research.'}
+
+## Target Users
+
+Based on research insights:
+${insights?.marketInsights?.slice(0, 2).map(m => `- ${m}`).join('\n') || '- Primary user persona'}
+
+## Success Metrics
+
+${insights?.successMetrics?.slice(0, 3).map(m => `- ${m}`).join('\n') || '- Key success metrics'}
+
+---
+
+## Feature Summary
+
+### MVP Features (${mvpFeatures.length})
+${mvpFeatures.map(f => `- **${f.name}**: ${f.description?.substring(0, 100) || ''}`).join('\n')}
+
+### Deferred to v2 (${deferredFeatures.length})
+${deferredFeatures.map(f => `- ${f.name}`).join('\n') || '- None specified'}
+
+---
+
+## Technical Requirements
+
+${insights?.technicalRequirements?.slice(0, 5).map(t => `- ${t}`).join('\n') || '- See PRD for details'}
+
+---
+
+*Always provide this file for context in every implementation session.*
+`;
+}
+
+function generateFoundationMilestone(features, databaseSchema, apiEndpoints) {
+  return `# Milestone 01: Foundation
+
+## Goal
+Set up the project foundation: design tokens, data model, routing, and core infrastructure.
+
+---
+
+## Before You Start: Clarifying Questions
+
+**You MUST ask these questions before implementing:**
+
+### 1. Authentication & Authorization
+- What authentication method? (Email/password, OAuth, Magic links, etc.)
+- Are there user roles? (Admin, User, Guest, etc.)
+- What resources need authorization checks?
+
+### 2. User & Account Modeling
+- Single-user or multi-user accounts?
+- Teams/workspaces/organizations?
+- How are users related to data? (Owner, collaborator, viewer)
+
+### 3. Tech Stack
+- Backend framework preference? (Next.js API routes, Express, etc.)
+- Database? (PostgreSQL, MongoDB, Supabase, Firebase)
+- Hosting target? (Vercel, AWS, Railway)
+
+### 4. Existing Patterns
+- Is there an existing codebase to integrate with?
+- Any required patterns or conventions?
+- Existing component library?
+
+---
+
+## Step 1.1: Project Initialization
+
+\`\`\`bash
+# Initialize project (adjust based on tech stack answer)
+npx create-next-app@latest . --typescript --tailwind --app --src-dir
+
+# Install core dependencies
+npm install zod date-fns
+
+# Install dev dependencies
+npm install -D @types/node prettier
+\`\`\`
+
+**Verification:**
+\`\`\`bash
+npm run dev
+# Should start on http://localhost:3000
+\`\`\`
+
+---
+
+## Step 1.2: Design Tokens
+
+Create \`src/lib/design-tokens.ts\`:
+\`\`\`typescript
+// Design tokens from design brief
+export const colors = {
+  primary: {
+    DEFAULT: '#6366f1', // Indigo-500
+    hover: '#4f46e5',
+    light: '#e0e7ff',
+  },
+  // ... extend based on design brief
+};
+
+export const typography = {
+  fontFamily: {
+    sans: ['Inter', 'system-ui', 'sans-serif'],
+    mono: ['JetBrains Mono', 'monospace'],
+  },
+  // ... extend based on design brief
+};
+\`\`\`
+
+---
+
+## Step 1.3: Data Model Types
+
+${databaseSchema ? `Based on DATABASE_SCHEMA.md, create TypeScript interfaces:
+
+\`\`\`typescript
+// src/types/index.ts
+// Copy interfaces from DATABASE_SCHEMA.md
+\`\`\`
+` : `Create TypeScript interfaces based on features:
+
+${features.slice(0, 3).map(f => `// ${f.name} types\nexport interface ${f.name.replace(/\s+/g, '')} {\n  id: string;\n  // ... define properties\n}`).join('\n\n')}
+`}
+
+---
+
+## Step 1.4: Routing Structure
+
+\`\`\`bash
+# Create route structure
+mkdir -p src/app/(auth)/{login,register}
+mkdir -p src/app/(dashboard)/{${features.slice(0, 3).map(f => f.name.toLowerCase().replace(/\s+/g, '-')).join(',')}}
+mkdir -p src/app/api
+\`\`\`
+
+---
+
+## Step 1.5: Environment Configuration
+
+Create \`.env.local\`:
+\`\`\`env
+# Database
+DATABASE_URL=
+
+# Authentication (if applicable)
+NEXTAUTH_SECRET=
+NEXTAUTH_URL=http://localhost:3000
+
+# External services (based on detected integrations)
+# Add as needed based on clarifying questions
+\`\`\`
+
+---
+
+## Completion Checklist
+
+- [ ] Project initialized with chosen framework
+- [ ] Design tokens configured
+- [ ] TypeScript types created for core entities
+- [ ] Route structure matches feature list
+- [ ] Environment variables documented
+- [ ] Dev server runs without errors
+
+---
+
+**Next:** Proceed to Milestone 02 (Shell) after this checklist is complete.
+`;
+}
+
+function generateFeatureMilestone(feature, milestoneNumber, allFeatures, componentTree) {
+  const paddedNum = String(milestoneNumber).padStart(2, '0');
+  const featureSlug = feature.name.toLowerCase().replace(/\s+/g, '-');
+
+  // Find dependencies
+  const dependencies = feature.dependencies || [];
+  const dependentFeatures = allFeatures.filter(f =>
+    dependencies.some(d => f.name.toLowerCase().includes(d.toLowerCase()))
+  );
+
+  return `# Milestone ${paddedNum}: ${feature.name}
+
+## Goal
+Implement ${feature.name}: ${feature.description?.substring(0, 200) || 'See user story below.'}
+
+---
+
+## User Story
+
+${feature.userStory || `As a user, I want to ${feature.name.toLowerCase()} so that I can achieve my goals.`}
+
+---
+
+## Prerequisites
+
+${dependentFeatures.length > 0
+  ? `Complete these milestones first:\n${dependentFeatures.map(f => `- ${f.name}`).join('\n')}`
+  : '- Milestone 01 (Foundation)\n- Milestone 02 (Shell)'}
+
+---
+
+## Acceptance Criteria
+
+${feature.acceptanceCriteria?.map((c, i) => `- [ ] AC${i + 1}: ${c}`).join('\n') || '- [ ] Feature works as described'}
+
+---
+
+## Implementation Steps
+
+### Step ${paddedNum}.1: Create Components
+
+\`\`\`bash
+mkdir -p src/components/${featureSlug}
+touch src/components/${featureSlug}/index.ts
+\`\`\`
+
+**Components to create:**
+${componentTree
+  ? `- See COMPONENT_TREE.md for ${feature.name} component hierarchy`
+  : `- \`${feature.name.replace(/\s+/g, '')}List.tsx\` - List/grid view
+- \`${feature.name.replace(/\s+/g, '')}Card.tsx\` - Individual item display
+- \`${feature.name.replace(/\s+/g, '')}Form.tsx\` - Create/edit form
+- \`${feature.name.replace(/\s+/g, '')}Detail.tsx\` - Detail view`}
+
+### Step ${paddedNum}.2: Create API Routes
+
+\`\`\`bash
+mkdir -p src/app/api/${featureSlug}
+touch src/app/api/${featureSlug}/route.ts
+\`\`\`
+
+**Endpoints needed:**
+- \`GET /api/${featureSlug}\` - List all
+- \`POST /api/${featureSlug}\` - Create new
+- \`GET /api/${featureSlug}/[id]\` - Get single
+- \`PUT /api/${featureSlug}/[id]\` - Update
+- \`DELETE /api/${featureSlug}/[id]\` - Delete
+
+### Step ${paddedNum}.3: Create Page Routes
+
+\`\`\`bash
+mkdir -p src/app/(dashboard)/${featureSlug}
+touch src/app/(dashboard)/${featureSlug}/page.tsx
+touch src/app/(dashboard)/${featureSlug}/[id]/page.tsx
+touch src/app/(dashboard)/${featureSlug}/new/page.tsx
+\`\`\`
+
+### Step ${paddedNum}.4: Wire Up Data
+
+1. Create data fetching hooks in \`src/lib/hooks/use-${featureSlug}.ts\`
+2. Connect API routes to database
+3. Add loading states and error handling
+4. Implement empty states (when no data exists)
+
+---
+
+## Edge Cases to Handle
+
+${feature.edgeCases?.map(e => `- ${e}`).join('\n') || `- Empty state: No ${feature.name.toLowerCase()} exist yet
+- Error state: API request fails
+- Loading state: Data is being fetched
+- Validation: Invalid form input`}
+
+---
+
+## Test Instructions
+
+See \`tests/${featureSlug}-tests.md\` for detailed test-writing instructions.
+
+**Quick verification:**
+1. Navigate to \`/dashboard/${featureSlug}\`
+2. Verify empty state displays correctly
+3. Create a new item - verify it appears in list
+4. Edit the item - verify changes persist
+5. Delete the item - verify removal
+
+---
+
+## Completion Checklist
+
+- [ ] All acceptance criteria met
+- [ ] Components created and styled
+- [ ] API routes implemented
+- [ ] Pages display data correctly
+- [ ] Empty states handled
+- [ ] Error states handled
+- [ ] Tests passing (see tests/${featureSlug}-tests.md)
+
+---
+
+**Next:** Proceed to Milestone ${String(milestoneNumber + 1).padStart(2, '0')} after this checklist is complete.
+`;
+}
+
+function generateOneShotPrompt(features) {
+  return `# One-Shot Implementation Prompt
+
+Copy this prompt into your coding agent (Claude Code, Cursor, etc.) to implement the entire product in one session.
+
+---
+
+## Prompt
+
+I have a complete product design ready for implementation. Before we begin, I need you to review the specifications and ask me some clarifying questions.
+
+**Files to read:**
+- \`product-plan/product-overview.md\` - Product summary and context
+- \`product-plan/milestones/01-foundation.md\` - Foundation setup
+- \`product-plan/milestones/*.md\` - All feature milestones
+
+**Before implementing, please ask me about:**
+
+1. **Authentication & Authorization**
+   - What login method should we use?
+   - Are there different user roles?
+   - What needs authorization checks?
+
+2. **Tech Stack Decisions**
+   - Database preference?
+   - Hosting platform?
+   - Any existing patterns to follow?
+
+3. **User Modeling**
+   - Single-user or multi-user accounts?
+   - Teams or organizations?
+
+4. **Scope Confirmation**
+   - Which features are MVP (must have)?
+   - Anything to defer to v2?
+
+After I answer these questions, please:
+
+1. Create a technical implementation plan
+2. Implement each milestone in order
+3. Verify each acceptance criterion
+4. Handle empty states and errors
+5. Write tests based on \`tests/*.md\` instructions
+
+**Features to implement (${features.length} total):**
+${features.map((f, i) => `${i + 1}. ${f.name} (${f.priority})`).join('\n')}
+
+Let's begin with your clarifying questions.
+
+---
+
+*This prompt ensures the agent understands the full context and asks important questions before implementation.*
+`;
+}
+
+function generateIncrementalPrompt() {
+  return `# Incremental Implementation Prompt
+
+Use this template to implement one milestone at a time. Copy and customize for each session.
+
+---
+
+## Prompt Template
+
+I'm implementing **[MILESTONE_NAME]** from my product plan.
+
+**Context files (always provide these):**
+- \`product-plan/product-overview.md\` - Product context
+- \`product-plan/milestones/[NN]-[milestone-name].md\` - This milestone's instructions
+- \`product-plan/tests/[feature-name]-tests.md\` - Test instructions (if applicable)
+
+**Previous milestones completed:**
+- [List completed milestones, or "None - this is the first"]
+
+**Implementation notes:**
+- [Add any specific decisions made in previous sessions]
+- [Tech stack: Next.js 14, PostgreSQL, etc.]
+- [Auth approach: NextAuth with email/password]
+
+**Please:**
+1. Review the milestone instructions
+2. Ask any clarifying questions
+3. Implement step by step
+4. Verify each acceptance criterion
+5. Write tests based on test instructions
+
+---
+
+## Example: Foundation Milestone
+
+I'm implementing **Milestone 01: Foundation** from my product plan.
+
+**Context files:**
+- \`product-plan/product-overview.md\`
+- \`product-plan/milestones/01-foundation.md\`
+
+**Previous milestones completed:** None - this is the first
+
+**Implementation notes:**
+- Using Next.js 14 with App Router
+- PostgreSQL via Supabase
+- Tailwind CSS for styling
+
+Please review the foundation instructions and ask any clarifying questions before we begin.
+
+---
+
+## Example: Feature Milestone
+
+I'm implementing **Milestone 03: Invoice Management** from my product plan.
+
+**Context files:**
+- \`product-plan/product-overview.md\`
+- \`product-plan/milestones/03-invoice-management.md\`
+- \`product-plan/tests/invoice-management-tests.md\`
+
+**Previous milestones completed:**
+- 01-foundation: Design tokens, types, routing
+- 02-shell: Navigation, layout, user menu
+
+**Implementation notes:**
+- Using Next.js 14 with App Router
+- PostgreSQL via Supabase (tables created in 01)
+- Auth: NextAuth with email/password
+
+Please review the milestone and test instructions, then implement step by step.
+
+---
+
+*Incremental implementation lets you review progress after each milestone and catch issues early.*
+`;
+}
+
+function generateTestInstructions(feature) {
+  const featureSlug = feature.name.toLowerCase().replace(/\s+/g, '-');
+
+  return {
+    featureName: feature.name,
+    fileName: `${featureSlug}-tests.md`,
+    content: `# Test Instructions: ${feature.name}
+
+## Overview
+
+These are **framework-agnostic test instructions**. Adapt them to your testing setup (Jest, Vitest, Playwright, Cypress, etc.).
+
+---
+
+## User Flow Tests
+
+### Happy Path: Create ${feature.name}
+
+**Scenario:** User successfully creates a new ${feature.name.toLowerCase()}
+
+**Steps:**
+1. Navigate to \`/${featureSlug}/new\`
+2. Fill in required fields
+3. Submit the form
+4. Verify redirect to list/detail page
+5. Verify new item appears
+
+**Assertions:**
+- Form submits without errors
+- Success message displays
+- New item visible in list
+- Data persists on page refresh
+
+### Happy Path: Edit ${feature.name}
+
+**Scenario:** User successfully edits an existing ${feature.name.toLowerCase()}
+
+**Steps:**
+1. Navigate to \`/${featureSlug}/[id]/edit\`
+2. Modify field values
+3. Save changes
+4. Verify changes persist
+
+**Assertions:**
+- Form pre-populates with existing data
+- Changes save successfully
+- Updated values display correctly
+
+### Happy Path: Delete ${feature.name}
+
+**Scenario:** User deletes a ${feature.name.toLowerCase()}
+
+**Steps:**
+1. Click delete button on item
+2. Confirm deletion in modal
+3. Verify item removed from list
+
+**Assertions:**
+- Confirmation modal appears
+- Item removed from UI
+- Item no longer accessible via direct URL
+
+---
+
+## Empty State Tests
+
+### No ${feature.name} Exist
+
+**Scenario:** User views ${featureSlug} page with no data
+
+**Assertions:**
+- Empty state message displays
+- "Create" CTA is visible and functional
+- No errors in console
+
+### After Deleting Last Item
+
+**Scenario:** User deletes the only ${feature.name.toLowerCase()}
+
+**Assertions:**
+- Empty state displays after deletion
+- User can create new item
+
+---
+
+## Error State Tests
+
+### Network Error
+
+**Scenario:** API request fails
+
+**Assertions:**
+- Error message displays to user
+- User can retry the action
+- No unhandled exceptions
+
+### Validation Error
+
+**Scenario:** User submits invalid data
+
+**Assertions:**
+- Validation errors display inline
+- Form is not submitted
+- User can correct and resubmit
+
+---
+
+## Acceptance Criteria Verification
+
+${feature.acceptanceCriteria?.map((c, i) => `### AC${i + 1}: ${c}
+
+**Test:**
+- [ ] Verify this behavior works as expected
+- [ ] Test edge cases
+- [ ] Confirm no regressions
+`).join('\n') || `### Verify Core Functionality
+
+- [ ] Feature works as described in user story
+- [ ] All happy paths pass
+- [ ] Error handling works correctly
+`}
+
+---
+
+## Edge Cases
+
+${feature.edgeCases?.map(e => `- [ ] ${e}`).join('\n') || `- [ ] Very long text input
+- [ ] Special characters in fields
+- [ ] Rapid successive actions
+- [ ] Concurrent edits (if applicable)`}
+
+---
+
+## Performance Considerations
+
+- [ ] List renders efficiently with 100+ items
+- [ ] Form submission responds within 2 seconds
+- [ ] No memory leaks on repeated navigation
+
+---
+
+*Write these tests before or alongside implementation (TDD approach recommended).*
+`,
+  };
+}
+
+function generateClarifyingQuestions(features) {
+  const integrations = [];
+  const featureNames = features.map(f => f.name.toLowerCase()).join(' ');
+
+  // Detect likely integrations
+  if (featureNames.includes('payment') || featureNames.includes('billing') || featureNames.includes('subscription')) {
+    integrations.push('Stripe');
+  }
+  if (featureNames.includes('auth') || featureNames.includes('login') || featureNames.includes('user')) {
+    integrations.push('Authentication');
+  }
+  if (featureNames.includes('email') || featureNames.includes('notification')) {
+    integrations.push('Email/Notifications');
+  }
+  if (featureNames.includes('file') || featureNames.includes('upload') || featureNames.includes('image')) {
+    integrations.push('File Storage');
+  }
+
+  return `# Clarifying Questions
+
+Before implementing, your coding agent should ask these questions:
+
+---
+
+## 1. Authentication & Authorization
+
+- [ ] What authentication method? (Email/password, OAuth providers, Magic links)
+- [ ] Which OAuth providers? (Google, GitHub, etc.)
+- [ ] Are there user roles? What are they?
+- [ ] What resources need authorization checks?
+- [ ] Session handling? (JWT, server sessions, cookies)
+
+---
+
+## 2. User & Account Modeling
+
+- [ ] Single-user accounts or multi-user/team accounts?
+- [ ] If teams: How are teams created? Invitations?
+- [ ] Workspaces or organizations?
+- [ ] How is data scoped? (Per-user, per-team, global)
+- [ ] User profile fields needed?
+
+---
+
+## 3. Tech Stack Preferences
+
+- [ ] Frontend framework? (Next.js, Vite + React, etc.)
+- [ ] Backend approach? (API routes, separate Express, serverless)
+- [ ] Database? (PostgreSQL, MongoDB, Supabase, Firebase)
+- [ ] ORM/Query builder? (Prisma, Drizzle, raw SQL)
+- [ ] Hosting target? (Vercel, AWS, Railway, self-hosted)
+
+---
+
+## 4. Detected Integrations
+
+${integrations.length > 0 ? integrations.map(i => `### ${i}
+
+- [ ] Which provider/service?
+- [ ] Test mode vs production?
+- [ ] Required features? (e.g., for Stripe: one-time, subscriptions, metered)
+`).join('\n') : 'No specific integrations detected. Ask about:
+
+- [ ] Payment processing?
+- [ ] Email sending?
+- [ ] File storage?
+- [ ] Third-party APIs?'}
+
+---
+
+## 5. Existing Codebase
+
+- [ ] Is there an existing codebase to integrate with?
+- [ ] Required patterns or conventions?
+- [ ] Existing component library? (shadcn/ui, Radix, etc.)
+- [ ] Existing API contracts to maintain?
+
+---
+
+## 6. Scope & Priority
+
+- [ ] Confirm MVP features (must ship in v1)
+- [ ] Features to defer to v2?
+- [ ] Any hard deadlines?
+- [ ] Testing requirements? (Unit, integration, E2E)
+
+---
+
+*Get answers to these questions before starting implementation to avoid rework.*
+`;
+}

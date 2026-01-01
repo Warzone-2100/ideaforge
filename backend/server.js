@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs';
-import { analyzeResearch, generateFeatures, refineFeatures, generatePRD, generateDatabaseSchema, generateApiEndpoints, generateComponentTree, generatePrompt, generateStoryFiles, generateDesignBrief, chatWithExport, generateDesignVariations, expandToHomepage, chatWithDesignBrief, regenerateDesignBrief, analyzeDesignScreenshot, generateFromTemplate, generateDesignLanguage, chatWithDesignLanguage, generateDesignVariation, adaptTemplateContent, extractDesignIntent } from './services/aiService.js';
+import { analyzeResearch, generateFeatures, refineFeatures, generatePRD, generateDatabaseSchema, generateApiEndpoints, generateComponentTree, generatePrompt, generateStoryFiles, generateDesignBrief, chatWithExport, generateDesignVariations, expandToHomepage, chatWithDesignBrief, regenerateDesignBrief, analyzeDesignScreenshot, generateFromTemplate, generateDesignLanguage, chatWithDesignLanguage, generateDesignVariation, adaptTemplateContent, extractDesignIntent, generateMilestoneExport } from './services/aiService.js';
 import { generateSkillFiles } from './services/skillsService.js';
 
 dotenv.config();
@@ -219,6 +219,25 @@ app.post('/api/export/chat', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Export chat error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Generate milestone-based export (Design OS inspired)
+app.post('/api/export/milestone', async (req, res) => {
+  log('📦 [MILESTONE] Generating milestone-based export');
+  try {
+    const { research, insights, features, prd, specifications } = req.body;
+
+    if (!features || features.length === 0) {
+      return res.status(400).json({ success: false, error: 'Features are required' });
+    }
+
+    const result = await generateMilestoneExport(research, insights, features, prd, specifications || {});
+    log(`📦 [MILESTONE] Generated ${result._meta?.milestoneCount || 0} milestones`);
+    res.json(result);
+  } catch (error) {
+    console.error('Milestone export error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
