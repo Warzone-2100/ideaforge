@@ -5626,12 +5626,12 @@ ${integrations.length > 0 ? integrations.map(i => `### ${i}
 - [ ] Which provider/service?
 - [ ] Test mode vs production?
 - [ ] Required features? (e.g., for Stripe: one-time, subscriptions, metered)
-`).join('\n') : 'No specific integrations detected. Ask about:
+`).join('\n') : `No specific integrations detected. Ask about:
 
 - [ ] Payment processing?
 - [ ] Email sending?
 - [ ] File storage?
-- [ ] Third-party APIs?'}
+- [ ] Third-party APIs?`}
 
 ---
 
