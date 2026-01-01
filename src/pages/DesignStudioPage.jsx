@@ -1,25 +1,26 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Palette, Download, Upload, Sparkles } from 'lucide-react';
+import { ArrowLeft, Palette, Download, Upload, Sparkles, PanelLeftClose, PanelLeft } from 'lucide-react';
 import useDesignStudioStore from '../stores/useDesignStudioStore';
 import useAppStore from '../stores/useAppStore';
 import { detectOldFormat, performMigration } from '../utils/designStudioMigration';
 
-// Import Design Studio components (these will use the adapter hook)
-import DesignStudioStep from '../components/design/DesignStudioStep';
+// Import new Design Studio V2 workflow
+import DesignStudioWorkflow from '../components/design/workflow/DesignStudioWorkflow';
+import DesignStudioSidebar from '../components/design/DesignStudioSidebar';
 
 /**
  * DesignStudioPage - Standalone Design Studio route
  *
- * Features:
- * - Separate from main flow
- * - Uses dedicated useDesignStudioStore
- * - Auto-migrates from old store format
- * - Can import context from main flow
+ * V2 Architecture:
+ * - 4-step workflow: Source → Language → Layouts → Generate
+ * - Design Language (tokens) is separated from Layout Patterns (structure)
+ * - Single source of truth for design that applies to ALL page types
  */
 export default function DesignStudioPage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [migrationStatus, setMigrationStatus] = useState(null);
+  const [showSidebar, setShowSidebar] = useState(true);
 
   // Check for migration on mount
   useEffect(() => {
@@ -34,8 +35,8 @@ export default function DesignStudioPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#09090b] flex flex-col">
-      {/* Subtle gradient orbs - different colors for Design Studio */}
+    <div className="min-h-screen bg-[#09090b] flex flex-col overflow-hidden">
+      {/* Subtle gradient orbs - violet/fuchsia theme for Design Studio */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-violet-500/[0.03] rounded-full blur-[120px]" />
         <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-fuchsia-500/[0.03] rounded-full blur-[100px]" />
@@ -61,12 +62,25 @@ export default function DesignStudioPage() {
               </div>
               <h1 className="text-lg font-semibold text-white">Design Studio</h1>
               <span className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-violet-500/10 text-violet-400 rounded-full border border-violet-500/20">
-                Beta
+                V2
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Sidebar Toggle */}
+            <button
+              onClick={() => setShowSidebar(!showSidebar)}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm text-zinc-400 hover:text-white bg-zinc-800/50 hover:bg-zinc-800 rounded-lg border border-zinc-700/50 transition-colors"
+              title={showSidebar ? 'Hide Sidebar' : 'Show Sidebar'}
+            >
+              {showSidebar ? (
+                <PanelLeftClose className="w-4 h-4" />
+              ) : (
+                <PanelLeft className="w-4 h-4" />
+              )}
+            </button>
+
             <button
               onClick={() => setShowImportModal(true)}
               className="flex items-center gap-2 px-3 py-1.5 text-sm text-zinc-400 hover:text-white bg-zinc-800/50 hover:bg-zinc-800 rounded-lg border border-zinc-700/50 transition-colors"
@@ -90,10 +104,14 @@ export default function DesignStudioPage() {
         </div>
       )}
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto relative z-10">
-        <div className="max-w-7xl mx-auto p-8">
-          <DesignStudioStep />
+      {/* Main Content - Sidebar + Workflow */}
+      <main className="flex-1 flex overflow-hidden relative z-10">
+        {/* Left Sidebar */}
+        {showSidebar && <DesignStudioSidebar />}
+
+        {/* Workflow Content */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <DesignStudioWorkflow />
         </div>
       </main>
 
@@ -106,17 +124,24 @@ export default function DesignStudioPage() {
 }
 
 /**
- * Export Button Component
+ * Export Button Component - Uses V2 store
  */
 function ExportButton() {
-  const exportDesignData = useDesignStudioStore((state) => state.exportDesignData);
+  const getExportData = useDesignStudioStore((state) => state.getExportData);
 
   const handleExport = () => {
-    const data = exportDesignData();
-    console.log('[Design Studio] Export data:', data);
+    const data = getExportData();
 
-    // For now, just log. Later we can add proper export functionality
-    alert('Design data exported to console. Check DevTools for the output.');
+    // Create downloadable JSON
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `design-system-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -132,7 +157,7 @@ function ExportButton() {
 
 /**
  * Import Context Modal
- * Shows what data will be imported from the main flow
+ * Imports data from main flow to provide context for design generation
  */
 function ImportContextModal({ onClose }) {
   const research = useAppStore((state) => state.research);
@@ -167,7 +192,7 @@ function ImportContextModal({ onClose }) {
         {hasData ? (
           <>
             <p className="text-zinc-400 text-sm mb-6">
-              The following data will be imported to provide context for design generation:
+              Import your PRD context to auto-generate design tokens based on your product vision.
             </p>
 
             <div className="space-y-3 mb-6">

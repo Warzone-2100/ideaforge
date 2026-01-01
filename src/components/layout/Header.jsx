@@ -1,11 +1,22 @@
-import { Lightbulb, RotateCcw, Zap, Palette } from 'lucide-react';
+import { useState } from 'react';
+import { Lightbulb, RotateCcw, Zap, Palette, Cloud } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useAppStore from '../../stores/useAppStore';
+import useAuthStore from '../../stores/useAuthStore';
 import { loadMockData } from '../../utils/mockData';
+import { isFirebaseConfigured } from '../../lib/firebase';
+import AuthModal from '../auth/AuthModal';
+import UserMenu from '../auth/UserMenu';
+import ProjectsModal from '../projects/ProjectsModal';
 
 export default function Header() {
   const clearResearch = useAppStore((state) => state.clearResearch);
   const store = useAppStore();
+
+  const { user, isLoading: authLoading } = useAuthStore();
+
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showProjectsModal, setShowProjectsModal] = useState(false);
 
   const handleLoadMockData = () => {
     loadMockData(store);
@@ -21,57 +32,105 @@ export default function Header() {
   };
 
   const showDevTools = import.meta.env.VITE_SHOW_USAGE_STATS === 'true';
+  const showCloudFeatures = isFirebaseConfigured();
 
   return (
-    <header className="h-14 border-b border-zinc-800/50 bg-[#09090b]/80 backdrop-blur-xl sticky top-0 z-50">
-      <div className="h-full px-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-            <Lightbulb className="w-4 h-4 text-white" />
+    <>
+      <header className="h-14 border-b border-zinc-800/50 bg-[#09090b]/80 backdrop-blur-xl sticky top-0 z-50">
+        <div className="h-full px-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+              <Lightbulb className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-semibold text-[15px] text-zinc-100">IdeaForge</span>
+            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+              Beta
+            </span>
           </div>
-          <span className="font-semibold text-[15px] text-zinc-100">IdeaForge</span>
-          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-            Beta
-          </span>
-        </div>
 
-        <div className="flex items-center gap-2">
-          {/* Design Studio Link */}
-          <Link
-            to="/design-studio"
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px]
-                     bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 border border-violet-500/20
-                     transition-colors"
-          >
-            <Palette className="w-3.5 h-3.5" />
-            Design Studio
-          </Link>
-
-          {/* Dev Mode: Load Mock Data */}
-          {showDevTools && (
-            <button
-              onClick={handleLoadMockData}
+          <div className="flex items-center gap-2">
+            {/* Design Studio Link */}
+            <Link
+              to="/design-studio"
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px]
-                       bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 border border-yellow-500/20
+                       bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 border border-violet-500/20
                        transition-colors"
-              title="Load mock data for testing (Dev mode only)"
             >
-              <Zap className="w-3.5 h-3.5" />
-              Load Mock Data
-            </button>
-          )}
+              <Palette className="w-3.5 h-3.5" />
+              Design Studio
+            </Link>
 
-          <button
-            onClick={handleNewProject}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px]
-                     text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50
-                     transition-colors"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            New Project
-          </button>
+            {/* Cloud Projects (only if Firebase configured and logged in) */}
+            {showCloudFeatures && user && (
+              <button
+                onClick={() => setShowProjectsModal(true)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px]
+                         bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 border border-indigo-500/20
+                         transition-colors"
+              >
+                <Cloud className="w-3.5 h-3.5" />
+                Projects
+              </button>
+            )}
+
+            {/* Dev Mode: Load Mock Data */}
+            {showDevTools && (
+              <button
+                onClick={handleLoadMockData}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px]
+                         bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 border border-yellow-500/20
+                         transition-colors"
+                title="Load mock data for testing (Dev mode only)"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                Load Mock Data
+              </button>
+            )}
+
+            <button
+              onClick={handleNewProject}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px]
+                       text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50
+                       transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              New Project
+            </button>
+
+            {/* Auth UI (only if Firebase configured) */}
+            {showCloudFeatures && (
+              <>
+                {authLoading ? (
+                  <div className="w-8 h-8 rounded-full bg-zinc-800 animate-pulse" />
+                ) : user ? (
+                  <UserMenu
+                    onOpenProjects={() => setShowProjectsModal(true)}
+                  />
+                ) : (
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-[13px]
+                             bg-indigo-500 hover:bg-indigo-400 text-white font-medium
+                             transition-colors"
+                  >
+                    Sign In
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Modals */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
+      <ProjectsModal
+        isOpen={showProjectsModal}
+        onClose={() => setShowProjectsModal(false)}
+      />
+    </>
   );
 }

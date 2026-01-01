@@ -104,7 +104,7 @@ export const MODEL_CONFIGS = {
   },
 
   // 🎨 DESIGN VARIATIONS - Multi-model comparison (3 models in parallel)
-  // NEW: Generate 3 different UI interpretations of design brief
+  // Generate 3 different UI interpretations of design brief
   designVariations: {
     models: [
       'google/gemini-3-flash-preview',      // Model 1: Reliable and fast
@@ -113,6 +113,15 @@ export const MODEL_CONFIGS = {
     ],
     maxTokens: 8000, // Increased from 4000 to handle larger HTML/CSS
     temperature: 0.9, // Higher temperature for more variety between runs
+  },
+
+  // 🎨 DESIGN VARIATION (single) - For Design Studio V2 workflow
+  // Generate a single HTML page variation using design tokens + layout
+  designVariation: {
+    primary: 'google/gemini-3-flash-preview',
+    fallback: 'anthropic/claude-4.5-haiku-20251001',
+    maxTokens: 8000,
+    temperature: 0.8,
   },
 
   // Step 9: Expand variation to full homepage (uses MAX BRAIN)
@@ -130,6 +139,25 @@ export const MODEL_CONFIGS = {
     maxTokens: 4000,
     temperature: 0.5, // Lower for accurate analysis
     supportsVision: true,
+  },
+
+  // ⚡ NEW: Code template content adaptation (SPEED tier)
+  // Fills content slots in code templates based on PRD context
+  // Much cheaper than full page generation (~800 tokens vs ~5000)
+  templateContent: {
+    primary: 'google/gemini-2.5-flash-lite',
+    fallback: 'x-ai/grok-4.1-fast',
+    maxTokens: 2000,
+    temperature: 0.7,
+  },
+
+  // ⚡ SPEED TIER: Design intent extraction from PRD context
+  // Returns archetype, audience, positioning, trust signals, tone, key messages
+  designIntent: {
+    primary: 'google/gemini-2.5-flash-lite',
+    fallback: 'anthropic/claude-3.5-haiku',
+    maxTokens: 1500,
+    temperature: 0.5,
   },
 };
 

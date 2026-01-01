@@ -1,7 +1,7 @@
 # CLAUDE.md - IdeaForge Documentation
 
 This file provides guidance to Claude Code and serves as the source of truth for how IdeaForge works.
-**Last Updated:** 2024-12-24
+**Last Updated:** 2025-12-31
 
 ---
 
@@ -68,17 +68,35 @@ ideaforge/
 ├── vite.config.js                   # Vite config (port 8000)
 ├── package.json                     # Frontend dependencies
 ├── src/
-│   ├── App.jsx                      # Main app - renders current step
-│   ├── main.jsx                     # Entry point
+│   ├── App.jsx                      # Routes: / (main flow), /design-studio
+│   ├── main.jsx                     # Entry point with BrowserRouter
 │   ├── index.css                    # Global styles + Tailwind
+│   ├── pages/
+│   │   ├── LandingPage.jsx         # Main 7-step workflow
+│   │   └── DesignStudioPage.jsx    # Standalone design studio
 │   ├── stores/
-│   │   └── useAppStore.js          # Zustand store (ALL state lives here)
+│   │   ├── useAppStore.js          # Main app state (~800 lines)
+│   │   ├── useDesignStudioStore.js # Design studio state (~1100 lines)
+│   │   └── useAuthStore.js         # Firebase auth state
+│   ├── hooks/
+│   │   └── useDesignStudioAdapter.js # Backward compatibility for design components
+│   ├── utils/
+│   │   └── designStudioMigration.js # Migration from old to new state format
 │   ├── services/
-│   │   └── aiService.js            # Frontend API client + mock fallbacks
+│   │   ├── aiService.js            # Frontend API client + mock fallbacks
+│   │   └── archetypeMatchingService.js # Template matching algorithm
+│   ├── data/
+│   │   └── templates/
+│   │       ├── archetypes/
+│   │       │   ├── schema.js       # 4 archetype definitions
+│   │       │   └── index.js        # Archetype utilities
+│   │       ├── builtInTemplates.js # Pre-analyzed templates
+│   │       └── codeTemplates/      # HTML/CSS template files
 │   └── components/
 │       ├── layout/
-│       │   ├── Header.jsx          # Top bar with logo
-│       │   └── Sidebar.jsx         # Step navigation
+│       │   ├── Header.jsx          # Top bar with Design Studio link
+│       │   └── Sidebar.jsx         # Step navigation (7 steps)
+│       ├── MainFlow.jsx            # Extracted main workflow
 │       ├── research/
 │       │   └── ResearchStep.jsx    # Step 1: Paste/upload research
 │       ├── analysis/
@@ -88,15 +106,41 @@ ideaforge/
 │       │   └── ChatRefinement.jsx  # Chat panel for feature mods
 │       ├── prd/
 │       │   └── PRDStep.jsx         # Step 4: View/edit PRD
-│       └── export/
-│           └── ExportStep.jsx      # Step 5: Export all formats
+│       ├── export/
+│       │   └── ExportStep.jsx      # Step 5: Export all formats
+│       └── design/
+│           ├── workflow/           # 5-step design workflow
+│           │   ├── Step1_ImportContext.jsx
+│           │   ├── Step2_DesignIntent.jsx
+│           │   ├── Step3_TemplateSelection.jsx
+│           │   ├── Step4_ContentEditing.jsx
+│           │   └── Step5_Export.jsx
+│           ├── TemplateUploadModal.jsx    # Screenshot upload UI
+│           ├── TemplateLibraryGrid.jsx    # Template grid display
+│           ├── TemplateCard.jsx           # Template card component
+│           ├── ArchetypeIndicator.jsx     # Archetype badge
+│           ├── MatchScoreCard.jsx         # Match score display
+│           ├── ImportContextModal.jsx     # Import from PRD modal
+│           ├── DesignStudioStep.jsx       # Main design UI
+│           ├── DesignVariationsStep.jsx   # Variation generation
+│           ├── DesignSystemEditor.jsx     # Token editing
+│           ├── DesignChatPanel.jsx        # AI chat refinement
+│           └── PageSelector.jsx           # Multi-page selection
 │
 └── backend/
-    ├── server.js                    # Express server + all routes
+    ├── server.js                    # Express server + 30+ API routes
     ├── package.json                 # Backend dependencies
     ├── .env                         # API keys (gitignored)
-    └── services/
-        └── aiService.js            # ALL AI LOGIC - prompts live here
+    ├── config/
+    │   └── models.js               # Multi-tier model configuration
+    ├── services/
+    │   ├── aiService.js            # ALL AI LOGIC (5300+ lines)
+    │   └── skillsService.js        # Skills library management
+    └── tests/
+        └── benchmark/              # Evaluation framework
+            ├── benchmark.js
+            ├── evaluators/
+            └── fixtures/
 ```
 
 ---
@@ -219,6 +263,7 @@ This means the LLM has full context at every step.
 
 **Base URL:** `http://localhost:3001/api`
 
+### Core Workflow
 | Method | Endpoint | Purpose | Request Body |
 |--------|----------|---------|--------------|
 | GET | `/health` | Health check | - |
@@ -226,10 +271,36 @@ This means the LLM has full context at every step.
 | POST | `/features/generate` | Generate features | `{ research, insights }` |
 | POST | `/features/refine` | Chat refinement | `{ message, features }` |
 | POST | `/prd/generate` | Generate PRD | `{ research, insights, features }` |
-| POST | `/design/generate` | Generate design brief | `{ research, insights, features }` |
-| POST | `/stories/generate` | Generate story files | `{ features, prd }` |
+| POST | `/stories/generate` | Generate story files | `{ features, prd, specifications }` |
 | POST | `/export/chat` | Export ideation chat | `{ message, context }` |
 | POST | `/export/:format` | Generate agent prompts | `{ research, insights, features, prd }` |
+
+### Specification Framework
+| Method | Endpoint | Purpose | Request Body |
+|--------|----------|---------|--------------|
+| POST | `/schema/generate` | Generate database schema | `{ prd, features }` |
+| POST | `/endpoints/generate` | Generate API endpoints | `{ prd, features, schema }` |
+| POST | `/components/generate` | Generate component tree | `{ prd, features }` |
+
+### Design Studio
+| Method | Endpoint | Purpose | Request Body |
+|--------|----------|---------|--------------|
+| POST | `/design/generate` | Generate design brief | `{ research, insights, features }` |
+| POST | `/design/chat` | Chat with design brief | `{ message, brief }` |
+| POST | `/design/regenerate` | Regenerate on token edits | `{ brief, changes }` |
+| POST | `/design/variations` | Generate 3 variations | `{ brief, pageType }` |
+| POST | `/design/expand` | Expand to full page | `{ variation, brief }` |
+| POST | `/design/extract-intent` | Extract design intent | `{ prdContext }` |
+| POST | `/design/language/generate` | Generate design language | `{ context }` |
+| POST | `/design/language/chat` | Chat with design language | `{ message, language }` |
+| POST | `/design/variation/generate` | Generate single variation | `{ brief, template }` |
+
+### Template Inspiration System
+| Method | Endpoint | Purpose | Request Body |
+|--------|----------|---------|--------------|
+| POST | `/templates/analyze` | Analyze screenshot | `{ imageBase64, name, category, notes }` |
+| POST | `/templates/generate` | Generate from template | `{ templateAnalysis, designBrief, pageType }` |
+| POST | `/templates/adapt` | Adapt content to PRD | `{ templateSlots, prdContext, designIntent }` |
 
 ---
 
@@ -353,6 +424,70 @@ All prompts are designed to **reject generic output**:
 - Tasks reference acceptance criteria numbers
 - Includes dependencies and implementation order
 - **Validation Checkpoints:** Functional, Technical, and Security test gates
+
+---
+
+## Template Inspiration System
+
+Upload designs you love and generate customized versions with your brand tokens.
+
+### How It Works
+
+```
+1. USER UPLOADS SCREENSHOT
+   ↓ (PNG/JPG, max 5MB)
+2. VISION ANALYSIS
+   ↓ (Gemini 3 Flash Preview analyzes image)
+3. EXTRACT STRUCTURE
+   ↓ (layout, components, colors, typography, mood)
+4. STORE IN TEMPLATE LIBRARY
+   ↓ (with preview thumbnail)
+5. SELECT TEMPLATE + DESIGN BRIEF
+   ↓ (match template structure with user's tokens)
+6. GENERATE CUSTOMIZED UI
+   → (production-ready HTML/CSS)
+```
+
+### Vision Analysis Output
+
+The AI vision model extracts:
+- **Layout:** Spatial organization (e.g., "sidebar-left + top-nav + 3-column-grid")
+- **Components:** UI elements (cards, tables, forms, navigation)
+- **Color Palette:** Primary, secondary, accent, background, text (hex values)
+- **Typography:** Style, weight, aesthetic feel
+- **Spacing:** Compact / Balanced / Generous
+- **Mood:** Professional, Playful, Minimal, Bold, Elegant, Data-dense
+- **UI Patterns:** Effects (glassmorphism, gradients, shadows)
+- **Grid System:** 12-column / Flexbox / CSS Grid
+- **Reference Products:** Similar products (Linear, Stripe, Notion)
+
+### Template Generation
+
+When generating from a template:
+- **KEEPS:** Layout structure, component types, patterns, spacing, grid
+- **APPLIES:** User's design tokens (colors, fonts, brand mood)
+- **MAINTAINS:** Template's responsiveness and proportions
+- **REPLACES:** Placeholder content with product-specific copy
+
+### Cost
+
+| Operation | Model | Cost |
+|-----------|-------|------|
+| Screenshot Analysis | Gemini 3 Flash Preview | ~$0.015 |
+| Template Generation | Claude 4.5 Sonnet | ~$0.03-0.05 |
+| Content Adaptation | Gemini 2.5 Flash Lite | ~$0.005 |
+
+### Implementation Status
+
+| Phase | Feature | Status |
+|-------|---------|--------|
+| 1 | Screenshot upload + vision analysis | ✅ Complete |
+| 1 | Template generation from screenshot | ✅ Complete |
+| 1 | Template library UI | ✅ Complete |
+| 2 | Code/HTML upload parsing | ⏳ Not Started |
+| 2 | URL scraping | ⏳ Not Started |
+| 3 | Template library search/browse | ⏳ Not Started |
+| 4 | Figma integration | ⏳ Not Started |
 
 ---
 
@@ -531,6 +666,80 @@ From `index.json`:
 
 ## Changelog
 
+### 2025-12-31
+- **📸 Template Inspiration System: Phase 1 Complete**
+  - **Screenshot Upload**: Drag & drop upload (PNG, JPG, max 5MB) with image preview and compression
+  - **Vision Analysis**: AI extracts layout, components, colors, typography, spacing, mood, UI patterns, grid system
+  - **Template Generation**: Generates customized HTML/CSS preserving template structure with user's design tokens
+  - **Template Library UI**: Grid display with built-in + user-uploaded templates, preview thumbnails, category filtering
+  - **Vision Model**: Google Gemini 3 Flash Preview (primary) with Claude Sonnet fallback
+  - **Cost**: ~$0.015 per screenshot analysis, ~$0.03-0.05 per template generation
+  - **New Files**:
+    - `src/components/design/TemplateUploadModal.jsx` - Upload UI with drag & drop
+    - `src/components/design/TemplateLibraryGrid.jsx` - Template grid display
+    - `src/components/design/TemplateCard.jsx` - Individual template cards
+  - **Backend Functions**:
+    - `analyzeDesignScreenshot(imageBase64, userNotes)` - Vision analysis
+    - `generateFromTemplate(templateAnalysis, designBrief, pageType)` - Template-based generation
+    - `adaptTemplateContent(templateSlots, prdContext, designIntent)` - Archetype-aware slot filling
+  - **API Endpoints**:
+    - `POST /api/templates/analyze` - Analyze uploaded screenshot
+    - `POST /api/templates/generate` - Generate UI from template
+    - `POST /api/templates/adapt` - Fill content slots
+  - **Phase 2+ (Not Started)**: Code/HTML upload parsing, URL scraping, Figma integration
+
+- **📋 Specification Framework Complete**
+  - **Database Schema Generation**: `POST /api/schema/generate` → `DATABASE_SCHEMA.md`
+  - **API Endpoints Specification**: `POST /api/endpoints/generate` → `API_ENDPOINTS.md`
+  - **Component Tree Specification**: `POST /api/components/generate` → `COMPONENT_TREE.md`
+  - **Spec-Focused Story Files**: Stories reference specifications instead of containing code examples
+  - **Backend Functions**: `generateDatabaseSchema()`, `generateApiEndpoints()`, `generateComponentTree()`
+  - **Impact**: AI developers use specifications with context7 and LSP, not code examples
+
+- **🏗️ Design Studio Refactor Status**
+  - ✅ `useDesignStudioStore.js` - New dedicated store with flat state structure (1100+ lines)
+  - ✅ `useDesignStudioAdapter.js` - Backward compatibility hook for existing components
+  - ✅ `/design-studio` route - Lazy-loaded standalone page
+  - ✅ Migration utilities - Auto-migrate from old localStorage format
+  - ⏳ **Phase 5 Cleanup Pending**: `designVariations` (~435 lines) still in `useAppStore.js`
+    - Removal deferred until full testing confirms new store works correctly
+    - ExportStep and FinalExportStep still read from old store
+
+- **🔍 Codebase Health**
+  - Zero TODO/FIXME markers in entire codebase
+  - All 30+ API endpoints fully implemented
+  - 3 Zustand stores: `useAppStore`, `useDesignStudioStore`, `useAuthStore`
+  - Complete benchmark/evaluation framework in `backend/tests/benchmark/`
+
+### 2025-12-28
+- **🎨 Design Studio V3: Intent-Driven Architecture**
+  - **Template Archetypes System**: 4 core archetypes (enterprise-technical, creator-aspirational, consumer-premium, startup-velocity) with full metadata including tone, audience match, content strategy, and CTA patterns
+  - **Design Intent Extraction**: AI extracts structured intent from PRD (~500 tokens) including archetype, audience, positioning, trust signals, tone, and key messages
+  - **Template Matching Algorithm**: Weighted scoring (archetype 40%, audience 25%, tone 20%, content 15%) ranks templates by fit
+  - **New 5-Step Workflow**: Context → Intent → Template → Content → Export (added Intent step between Context and Template)
+  - **Archetype-Aware Content Generation**: Slot filling now uses archetype content strategy, incorporates key messages and trust signals
+  - **New Files Created**:
+    - `src/data/templates/archetypes/schema.js` - Archetype definitions + detection signals
+    - `src/data/templates/archetypes/index.js` - Archetype utility functions
+    - `src/services/archetypeMatchingService.js` - Template matching algorithm
+    - `src/components/design/workflow/Step2_DesignIntent.jsx` - Intent extraction UI
+    - `src/components/design/ArchetypeIndicator.jsx` - Archetype badge component
+    - `src/components/design/MatchScoreCard.jsx` - Match score display component
+    - `src/components/design/workflow/Step3_TemplateSelection.jsx` - Enhanced template selection
+    - `src/components/design/workflow/Step4_ContentEditing.jsx` - Content editing step
+    - `src/components/design/workflow/Step5_Export.jsx` - Export step
+  - **Modified Files**:
+    - `backend/services/aiService.js` - Added `extractDesignIntent()`, enhanced `adaptTemplateContent()`
+    - `backend/server.js` - Added `/api/design/extract-intent` endpoint
+    - `backend/config/models.js` - Added designIntent model config (SPEED tier)
+    - `src/services/aiService.js` - Added frontend `extractDesignIntent()` method
+    - `src/stores/useDesignStudioStore.js` - Added designIntent, templateSelection, contentGeneration state
+    - `src/components/design/CodeTemplateSelector.jsx` - Integrated match scoring
+    - `src/components/design/workflow/*.jsx` - Updated workflow navigation
+    - All 4 code templates - Added archetype metadata
+  - **Cost**: ~$0.0025 per session (25% more than before, 10x better quality)
+  - **Impact**: Generated content now matches product brand (enterprise vs startup vs creator) instead of generic output
+
 ### 2025-12-26
 - **🎯 Enhanced BMAD Story Files with 2025 Best Practices:**
   - **PRD Traceability Section**: Every story now links back to specific PRD FR/NFR numbers, success metrics, and original research quotes
@@ -598,10 +807,14 @@ For detailed technical architecture and implementation plans:
 | What to Change | File |
 |----------------|------|
 | AI prompts/behavior | `backend/services/aiService.js` |
-| AI architecture/models | See `ARCHITECTURE.md` |
-| State structure | `src/stores/useAppStore.js` |
+| AI architecture/models | `backend/config/models.js` |
+| Main app state | `src/stores/useAppStore.js` |
+| Design studio state | `src/stores/useDesignStudioStore.js` |
+| Template archetypes | `src/data/templates/archetypes/schema.js` |
+| Template matching | `src/services/archetypeMatchingService.js` |
 | API client | `src/services/aiService.js` |
-| Step UI components | `src/components/{step}/*.jsx` |
-| Routes | `backend/server.js` |
+| Main workflow components | `src/components/{step}/*.jsx` |
+| Design workflow components | `src/components/design/workflow/*.jsx` |
+| Backend routes | `backend/server.js` |
 | Styling | `src/index.css` + component classes |
 | Dev server port | `vite.config.js` |

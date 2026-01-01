@@ -6,5 +6,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 8000,
+    headers: {
+      // Required for Firebase Auth popup to work properly
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+    },
   },
 })

@@ -191,11 +191,19 @@ export default function StoriesStep() {
                 className="bg-zinc-900/50 border border-zinc-800/50 rounded-xl overflow-hidden"
               >
                 {/* Story Header */}
-                <button
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() =>
                     setExpandedStory(expandedStory === index ? null : index)
                   }
-                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-zinc-800/30 transition-colors"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setExpandedStory(expandedStory === index ? null : index);
+                    }
+                  }}
+                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-zinc-800/30 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <BookOpen className="w-5 h-5 text-indigo-400" />
@@ -235,7 +243,7 @@ export default function StoriesStep() {
                       <ChevronDown className="w-5 h-5 text-zinc-400" />
                     )}
                   </div>
-                </button>
+                </div>
 
                 {/* Story Content */}
                 {expandedStory === index && (

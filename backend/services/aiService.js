@@ -35,6 +35,40 @@ function isOpenRouterModel(model) {
   return model && model.includes('/');
 }
 
+// Extract product name from PRD context
+function extractProductName(prdContext) {
+  if (!prdContext) return 'Product';
+
+  // Try to find product name from PRD content
+  if (prdContext.prd) {
+    // Look for common patterns like "# Product Name" or "Product: Name"
+    const productMatch = prdContext.prd.match(/^#\s*(.+?)(?:\n|$)/m) ||
+                         prdContext.prd.match(/Product(?:\s*Name)?:\s*(.+?)(?:\n|$)/i) ||
+                         prdContext.prd.match(/^##\s*(.+?)(?:\n|$)/m);
+    if (productMatch && productMatch[1]) {
+      return productMatch[1].trim();
+    }
+  }
+
+  // Try to extract from research
+  if (prdContext.research) {
+    const researchMatch = prdContext.research.match(/(?:building|creating|developing)\s+(?:a\s+)?(.+?)(?:\.|,|\n|$)/i);
+    if (researchMatch && researchMatch[1]) {
+      return researchMatch[1].trim();
+    }
+  }
+
+  // Fallback to first feature's category or generic name
+  if (prdContext.features && prdContext.features.length > 0) {
+    const firstFeature = prdContext.features[0];
+    if (firstFeature.name) {
+      return firstFeature.name.split(' ')[0] + ' App';
+    }
+  }
+
+  return 'Product';
+}
+
 async function callOpenRouter(systemPrompt, userMessage, options = {}) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
@@ -4233,5 +4267,649 @@ Expand this component into a complete, production-ready ${pageType} page with al
   } catch (error) {
     console.error('Homepage expansion error:', error);
     throw error;
+  }
+}
+
+// ============================================================================
+// DESIGN STUDIO V2 - Design Language & Layout-Based Generation
+// ============================================================================
+
+/**
+ * Generate design language tokens from PRD context
+ * Used in Design Studio Step 1 when user chooses "Generate from PRD"
+ */
+export async function generateDesignLanguage(context) {
+  const { research, insights, features, prd } = context;
+
+  const systemPrompt = `You are a design system expert. Based on the provided product context (research, features, PRD), generate a comprehensive design language specification.
+
+Your output MUST be valid JSON with this exact structure:
+{
+  "colors": {
+    "primary": "#hex",
+    "primaryHover": "#hex",
+    "secondary": "#hex",
+    "secondaryHover": "#hex",
+    "accent": "#hex",
+    "accentHover": "#hex",
+    "background": "#hex",
+    "surface": "#hex",
+    "surfaceHover": "#hex",
+    "surfaceActive": "#hex",
+    "text": "#hex",
+    "textSecondary": "#hex",
+    "textMuted": "#hex",
+    "border": "#hex",
+    "borderHover": "#hex",
+    "error": "#hex",
+    "success": "#hex",
+    "warning": "#hex",
+    "info": "#hex"
+  },
+  "typography": {
+    "fontFamily": "Font Name",
+    "headingFont": "Font Name",
+    "monoFont": "Monospace Font",
+    "baseSize": 16,
+    "scaleRatio": 1.25
+  },
+  "radii": {
+    "none": 0,
+    "sm": 4,
+    "md": 8,
+    "lg": 12,
+    "xl": 16
+  },
+  "mood": ["tag1", "tag2", "tag3"],
+  "references": ["Product1", "Product2"],
+  "rationale": "Brief explanation of design choices"
+}
+
+Guidelines:
+- Choose colors that reflect the product's personality and target audience
+- For B2B/enterprise: professional, muted palettes with blues/purples
+- For consumer apps: vibrant, engaging colors
+- For creative tools: bold, expressive palettes
+- Dark mode should use zinc/slate backgrounds with high contrast text
+- Light mode should use subtle grays with dark text
+- Font choices should match the mood (Inter for modern, Plus Jakarta for friendly, etc.)
+- Mood tags should be 2-4 descriptive words (minimal, bold, professional, etc.)
+- References should be 1-3 real products whose aesthetic you're drawing from
+
+IMPORTANT: Return ONLY valid JSON, no markdown or explanation.`;
+
+  const userMessage = `Create a design language for this product:
+
+RESEARCH:
+${research?.substring(0, 2000) || 'No research provided'}
+
+KEY INSIGHTS:
+${JSON.stringify(insights || {}, null, 2).substring(0, 1000)}
+
+FEATURES:
+${features?.map(f => `- ${f.name}: ${f.description}`).join('\n').substring(0, 1000) || 'No features provided'}
+
+PRD EXCERPT:
+${prd?.substring(0, 2000) || 'No PRD provided'}
+
+Generate a cohesive design language that reflects this product's identity.`;
+
+  try {
+    const config = MODEL_CONFIGS.designBrief;
+    const result = await callAIWithFallback(systemPrompt, userMessage, config);
+    const usage = result.usage;
+
+    // Parse the JSON response
+    let designLanguage;
+    try {
+      let cleanedContent = result.content.trim();
+      if (cleanedContent.startsWith('```json')) {
+        cleanedContent = cleanedContent.slice(7);
+      }
+      if (cleanedContent.startsWith('```')) {
+        cleanedContent = cleanedContent.slice(3);
+      }
+      if (cleanedContent.endsWith('```')) {
+        cleanedContent = cleanedContent.slice(0, -3);
+      }
+      designLanguage = JSON.parse(cleanedContent.trim());
+    } catch (e) {
+      console.error('Failed to parse design language JSON:', e);
+      throw new Error('Invalid JSON response from AI');
+    }
+
+    return {
+      success: true,
+      designLanguage,
+      _meta: {
+        model: usage.model,
+        tokens: usage.totalTokens,
+        cost: usage.cost.total,
+        timestamp: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('Design language generation error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Chat with design language to modify tokens
+ * Used in Design Studio Step 2 for conversational refinement
+ */
+export async function chatWithDesignLanguage(message, currentTokens) {
+  const systemPrompt = `You are a design system assistant helping refine design tokens through conversation.
+
+Current design tokens:
+${JSON.stringify(currentTokens, null, 2)}
+
+When the user asks to change something:
+1. Identify what they want to change (colors, fonts, spacing, mood, etc.)
+2. Suggest appropriate modifications
+3. Return your response with updated tokens
+
+Your response MUST be valid JSON with this structure:
+{
+  "message": "Friendly response explaining what you changed",
+  "updatedTokens": {
+    // Only include the tokens that changed, partial update
+    // e.g., {"colors": {"primary": "#newcolor"}} for just primary color
+  }
+}
+
+If you can't understand the request or it's not about design tokens, respond with:
+{
+  "message": "Your clarification message",
+  "updatedTokens": null
+}
+
+IMPORTANT:
+- Be concise and helpful
+- Only modify what the user asks for
+- Return ONLY valid JSON, no markdown`;
+
+  const userMessage = message;
+
+  try {
+    const config = MODEL_CONFIGS.refineFeatures; // Use fast model for chat
+    const result = await callAIWithFallback(systemPrompt, userMessage, config);
+    const usage = result.usage;
+
+    // Parse the JSON response
+    let response;
+    try {
+      let cleanedContent = result.content.trim();
+      if (cleanedContent.startsWith('```json')) {
+        cleanedContent = cleanedContent.slice(7);
+      }
+      if (cleanedContent.startsWith('```')) {
+        cleanedContent = cleanedContent.slice(3);
+      }
+      if (cleanedContent.endsWith('```')) {
+        cleanedContent = cleanedContent.slice(0, -3);
+      }
+      response = JSON.parse(cleanedContent.trim());
+    } catch (e) {
+      console.error('Failed to parse chat response JSON:', e);
+      return {
+        success: false,
+        error: 'Failed to parse AI response',
+      };
+    }
+
+    return {
+      success: true,
+      message: response.message,
+      updatedTokens: response.updatedTokens,
+      _meta: {
+        model: usage.model,
+        tokens: usage.totalTokens,
+        cost: usage.cost.total,
+        timestamp: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('Design language chat error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Generate a design variation using design language + layout
+ * Used in Design Studio Step 4
+ */
+export async function generateDesignVariation(params) {
+  const { pageType, layout, designLanguage, variationIndex = 0, prdContext = {} } = params;
+
+  // Extract product info from PRD context
+  const productName = extractProductName(prdContext);
+  const features = prdContext.features || [];
+  const topFeatures = features.slice(0, 5).map(f => `• ${f.name}: ${f.description || ''}`).join('\n');
+
+  const systemPrompt = `You are an expert UI/UX designer generating HTML code for a ${pageType} page.
+
+=== PRODUCT CONTEXT (CRITICAL - USE THIS FOR ALL COPY!) ===
+Product Name: ${productName}
+${prdContext.prd ? `
+PRD Summary:
+${prdContext.prd.substring(0, 2000)}
+` : ''}
+${topFeatures ? `
+Key Features:
+${topFeatures}
+` : ''}
+
+=== DESIGN TOKENS ===
+${JSON.stringify(designLanguage, null, 2)}
+
+=== LAYOUT STRUCTURE ===
+${layout?.name || 'Default'} - ${layout?.description || ''}
+Sections: ${layout?.sections?.join(', ') || 'hero, features, cta'}
+
+=== REQUIREMENTS ===
+1. Use REAL product copy based on the PRD context above - NO generic placeholders!
+2. The headline, subheadline, and all text must be about "${productName}"
+3. Feature cards must describe the actual features from the PRD
+4. Use EXACTLY the colors from design tokens
+5. Use the specified fonts from typography tokens
+6. Use the specified border radii and spacing
+7. Follow the layout structure provided
+8. Variation #${variationIndex + 1} - add creative differences while staying on-brand
+
+Return ONLY the HTML with embedded styles. The HTML should be:
+- Self-contained (all CSS in <style> tag)
+- Responsive (mobile-first)
+- Modern and polished
+- Using semantic HTML
+- With REAL product content, not lorem ipsum!
+
+IMPORTANT: Return ONLY the HTML code, no markdown or explanation.`;
+
+  const userMessage = `Generate ${pageType} page variation #${variationIndex + 1} for "${productName}".
+
+CRITICAL: Use the actual product information from the PRD context. Do NOT use:
+- "Lorem ipsum" or placeholder text
+- "Your Company" or "Company Name"
+- Generic feature descriptions
+- Placeholder images or icons without meaning
+
+Make this variation unique by:
+- ${variationIndex === 0 ? 'Using a clean, balanced layout' : ''}
+- ${variationIndex === 1 ? 'Emphasizing bold typography and larger elements' : ''}
+- ${variationIndex === 2 ? 'Using more whitespace and minimalist approach' : ''}
+- ${variationIndex > 2 ? 'Adding creative visual interest while staying professional' : ''}
+
+Generate the complete HTML now with REAL product content.`;
+
+  try {
+    const config = MODEL_CONFIGS.designVariation; // Use singular config with primary/fallback
+    const result = await callAIWithFallback(systemPrompt, userMessage, config);
+    const usage = result.usage;
+
+    let html = result.content.trim();
+
+    // Clean up markdown if present
+    if (html.startsWith('```html')) {
+      html = html.slice(7);
+    }
+    if (html.startsWith('```')) {
+      html = html.slice(3);
+    }
+    if (html.endsWith('```')) {
+      html = html.slice(0, -3);
+    }
+
+    return {
+      success: true,
+      variation: {
+        html: html.trim(),
+        code: html.trim(),
+        description: `${pageType} variation ${variationIndex + 1} - ${layout?.name || 'Custom'} layout`,
+      },
+      _meta: {
+        model: usage.model,
+        tokens: usage.totalTokens,
+        cost: usage.cost.total,
+        timestamp: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('Design variation generation error:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
+// CODE TEMPLATE CONTENT ADAPTATION
+// ============================================================================
+//
+// Fills content slots in code templates based on PRD context.
+// Much more efficient than generating full pages - only ~800 tokens.
+//
+// ============================================================================
+
+/**
+ * Adapt template content slots based on PRD context
+ * This is the KEY cost-saving function:
+ * - Only generates content strings (~500-1000 tokens)
+ * - Does NOT regenerate HTML structure
+ * - Uses PRD context for personalization
+ * - Now archetype-aware for brand-matching content
+ */
+export async function adaptTemplateContent(templateSlots, prdContext, designIntent = null) {
+  // Build a summary of what data is available
+  const contextSummary = {
+    hasResearch: !!prdContext.research,
+    hasInsights: !!prdContext.insights,
+    featureCount: prdContext.features?.length || 0,
+    hasPRD: !!prdContext.prd,
+    hasDesignIntent: !!designIntent?.archetype,
+  };
+
+  // Build archetype context if available
+  let archetypeContext = '';
+  if (designIntent?.archetype) {
+    const archetypeGuidance = {
+      'enterprise-technical': `
+ARCHETYPE: Enterprise Technical
+- Lead with metrics, scale, reliability numbers
+- Use confident, technical tone - avoid playful or casual
+- CTAs: "Book a Demo", "Contact Sales", "View Documentation"
+- Trust: certifications, SLAs, enterprise logos, uptime stats
+- Headlines: capability-focused, metric-driven`,
+      'creator-aspirational': `
+ARCHETYPE: Creator Aspirational
+- Lead with transformation, journey, potential
+- Use inspiring, warm tone - avoid corporate jargon
+- CTAs: "Start Creating", "Join Free", "See Examples"
+- Trust: creator stories, community size, success results
+- Headlines: benefit-focused, aspirational`,
+      'consumer-premium': `
+ARCHETYPE: Consumer Premium
+- Lead with experience, feeling, lifestyle
+- Use sophisticated, aspirational tone - avoid salesy or cheap
+- CTAs: "Get Access", "Join Waitlist", "Discover More"
+- Trust: press logos, awards, ratings, exclusivity
+- Headlines: experience-focused, elegant`,
+      'startup-velocity': `
+ARCHETYPE: Startup Velocity
+- Lead with speed, efficiency, results
+- Use energetic, direct tone - avoid slow or bureaucratic
+- CTAs: "Try Free", "Get Started", "Start Now"
+- Trust: user count, growth metrics, investor backing
+- Headlines: benefit-first, action-oriented`,
+    };
+
+    archetypeContext = archetypeGuidance[designIntent.archetype] || '';
+
+    // Add tone guidance
+    if (designIntent.tone) {
+      archetypeContext += `\n\nTONE GUIDANCE:
+- Primary: ${designIntent.tone.primary || 'professional'}
+- Secondary: ${designIntent.tone.secondary || 'clear'}
+- AVOID: ${designIntent.tone.avoid?.join(', ') || 'none specified'}`;
+    }
+
+    // Add key messages to incorporate
+    if (designIntent.keyMessages?.length > 0) {
+      archetypeContext += `\n\nKEY MESSAGES TO INCORPORATE:
+${designIntent.keyMessages.map((m, i) => `${i + 1}. ${m.message}`).join('\n')}`;
+    }
+
+    // Add trust signals
+    if (designIntent.trustSignals?.length > 0) {
+      archetypeContext += `\n\nTRUST SIGNALS TO USE:
+${designIntent.trustSignals.map(t => `- ${t.value} (${t.type})`).join('\n')}`;
+    }
+  }
+
+  const systemPrompt = `You are a conversion copywriter filling content slots for a web page.
+${archetypeContext}
+
+PRODUCT CONTEXT:
+${prdContext.prd ? `PRD:\n${prdContext.prd.substring(0, 3000)}...` : 'No PRD provided'}
+
+${prdContext.insights ? `INSIGHTS:\n${JSON.stringify(prdContext.insights, null, 2).substring(0, 1500)}` : ''}
+
+${prdContext.features?.length > 0 ? `FEATURES (${prdContext.features.length} total):\n${prdContext.features.slice(0, 5).map(f => `- ${f.name}: ${f.description}`).join('\n')}` : 'No features provided'}
+
+You will receive a list of content slots that need to be filled.
+For each slot, generate compelling, specific content based on the product context.
+${archetypeContext ? 'IMPORTANT: Follow the archetype guidance above for tone, CTAs, and messaging.' : ''}
+
+CRITICAL RULES:
+1. Use SPECIFIC details from the PRD - never generic phrases like "powerful solution"
+2. Headlines must be punchy and benefit-focused (not feature-focused)
+3. CTAs must be action-oriented ("Start Free Trial", "Get Started", not "Submit" or "Click Here")
+4. Feature descriptions must highlight USER BENEFITS, not just capabilities
+5. Keep text concise - respect the maxLength constraints when provided
+6. Match the tone to the product type (B2B = professional, consumer = friendly/approachable)
+7. For logo_initials, use 2-3 letter abbreviation of the product name
+8. For features list, adapt the accepted features from the context
+${archetypeContext ? '9. ARCHETYPE COMPLIANCE: Ensure all content matches the specified archetype guidance' : ''}
+
+Return ONLY valid JSON with this EXACT structure (no markdown, no explanation):
+{
+  "logo_initials": "XX",
+  "product_name": "Product Name",
+  "nav_cta": "Get Started",
+  "page_title": "Product Name - Tagline",
+  "hero_badge": "Status Badge Text",
+  "hero_headline": "Main headline with <br><span class=\\"text-gradient\\">gradient text</span>",
+  "hero_subheadline": "Supporting description text",
+  "cta_primary": "Primary Action",
+  "cta_secondary": "Secondary Action",
+  "features_headline": "Section Headline",
+  "features_subheadline": "Section description",
+  "features": [
+    { "icon": "lucide-icon-name", "title": "Feature Title", "description": "Feature description", "tags": ["tag1", "tag2"] }
+  ],
+  "roadmap_headline": "What's Next",
+  "roadmap": [
+    { "title": "Phase Title", "description": "Phase description", "status": "completed|in-progress|planned" }
+  ],
+  "tech_stack": [
+    { "name": "Technology Name", "icon": "lucide-icon-name" }
+  ],
+  "footer_logo_initials": "XX",
+  "footer_copyright": "© 2025 Product Name"
+}`;
+
+  // Build user message with slot details
+  const slotDetails = templateSlots.map(slot => {
+    const maxLen = slot.validation?.maxLength ? ` (max ${slot.validation.maxLength} chars)` : '';
+    const required = slot.validation?.required ? ' [REQUIRED]' : '';
+    return `- ${slot.id}: ${slot.label}${maxLen}${required}
+    Description: ${slot.description || 'No description'}
+    Type: ${slot.type}`;
+  }).join('\n');
+
+  const userMessage = `Fill these content slots for the product:
+
+SLOTS TO FILL:
+${slotDetails}
+
+Context available: ${contextSummary.hasResearch ? 'Research ✓' : 'No research'}, ${contextSummary.hasInsights ? 'Insights ✓' : 'No insights'}, ${contextSummary.featureCount} features, ${contextSummary.hasPRD ? 'PRD ✓' : 'No PRD'}
+
+Generate compelling, specific content that makes this landing page sell the product. Return ONLY the JSON object.`;
+
+  try {
+    const config = MODEL_CONFIGS.templateContent;
+    const result = await callAIWithFallback(systemPrompt, userMessage, config);
+    const usage = result.usage;
+
+    // Parse JSON response
+    let filledContent;
+    let content = result.content.trim();
+
+    // Clean up markdown if present
+    if (content.startsWith('```json')) {
+      content = content.slice(7);
+    }
+    if (content.startsWith('```')) {
+      content = content.slice(3);
+    }
+    if (content.endsWith('```')) {
+      content = content.slice(0, -3);
+    }
+
+    try {
+      filledContent = JSON.parse(content.trim());
+    } catch (parseError) {
+      console.error('Failed to parse template content JSON:', parseError);
+      console.error('Raw content:', content.substring(0, 500));
+      throw new Error('AI response was not valid JSON');
+    }
+
+    return {
+      success: true,
+      filledContent,
+      _meta: {
+        model: usage.model,
+        tokens: usage.totalTokens,
+        cost: usage.cost.total,
+        timestamp: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('Template content adaptation error:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
+// DESIGN INTENT EXTRACTION - Extract structured design intent from PRD context
+// ============================================================================
+
+/**
+ * Extract structured design intent from PRD context
+ * Returns archetype, audience, positioning, trust signals, tone, key messages
+ */
+export async function extractDesignIntent(prdContext) {
+  const { research, insights, features, prd } = prdContext || {};
+
+  // Build context string
+  const contextParts = [];
+  if (prd) contextParts.push(`PRD:\n${prd.substring(0, 2000)}`);
+  if (research) contextParts.push(`Research:\n${research.substring(0, 500)}`);
+  if (insights) contextParts.push(`Insights:\n${JSON.stringify(insights).substring(0, 500)}`);
+  if (features?.length) {
+    const featureSummary = features.slice(0, 5).map(f => f.name || f.title).join(', ');
+    contextParts.push(`Key Features: ${featureSummary}`);
+  }
+
+  const context = contextParts.join('\n\n');
+
+  if (!context || context.length < 50) {
+    return {
+      success: false,
+      error: 'Insufficient PRD context for intent extraction',
+    };
+  }
+
+  const systemPrompt = `You are a design strategist extracting structured design intent from product context.
+
+OUTPUT VALID JSON with this exact structure:
+{
+  "archetype": "enterprise-technical" | "creator-aspirational" | "consumer-premium" | "startup-velocity",
+  "archetypeConfidence": 0-100,
+  "archetypeReasoning": "Brief explanation of why this archetype",
+
+  "audience": {
+    "primary": "developers" | "creators" | "consumers" | "teams" | "enterprise",
+    "sophistication": "beginner" | "intermediate" | "expert",
+    "buyingPower": "individual" | "team" | "enterprise"
+  },
+
+  "positioning": {
+    "category": "Product category in 2-4 words",
+    "versus": ["Competitor 1", "Alternative approach"],
+    "uniqueAngle": "What makes this different in one sentence"
+  },
+
+  "trustSignals": [
+    { "type": "metric" | "certification" | "social" | "press", "value": "Specific signal", "priority": 1-3 }
+  ],
+
+  "tone": {
+    "primary": "confident" | "inspiring" | "sophisticated" | "energetic" | "friendly",
+    "secondary": "technical" | "warm" | "aspirational" | "direct" | "playful",
+    "avoid": ["List of tones to avoid"]
+  },
+
+  "keyMessages": [
+    { "priority": 1, "message": "Primary value proposition" },
+    { "priority": 2, "message": "Secondary benefit" }
+  ]
+}
+
+ARCHETYPE SELECTION RULES:
+- enterprise-technical: B2B, APIs, DevTools, Infrastructure, Security-focused
+- creator-aspirational: Creative tools, Courses, Community platforms, Personal brands
+- consumer-premium: Lifestyle apps, Premium subscriptions, Luxury experiences
+- startup-velocity: SaaS, Productivity tools, Fast-moving startups, Growth-focused
+
+RULES:
+1. Every decision must cite EVIDENCE from the provided context
+2. If context is vague, use lower confidence (50-70)
+3. Trust signals must be extractable from context, not invented
+4. Maximum 3 trust signals, maximum 3 key messages
+5. Output ONLY valid JSON, no markdown or explanation`;
+
+  const userPrompt = `Extract design intent from this product context:\n\n${context}`;
+
+  try {
+    const config = MODEL_CONFIGS.designIntent || {
+      primary: 'google/gemini-2.5-flash-lite',
+      fallback: 'anthropic/claude-3.5-haiku',
+      maxTokens: 1500,
+      temperature: 0.5,
+    };
+
+    const response = await callAIWithFallback(systemPrompt, userPrompt, config);
+
+    // Parse JSON from response
+    let intent;
+    try {
+      // Clean response - remove markdown code blocks if present
+      let cleaned = response.content.trim();
+      if (cleaned.startsWith('```json')) {
+        cleaned = cleaned.slice(7);
+      } else if (cleaned.startsWith('```')) {
+        cleaned = cleaned.slice(3);
+      }
+      if (cleaned.endsWith('```')) {
+        cleaned = cleaned.slice(0, -3);
+      }
+      intent = JSON.parse(cleaned.trim());
+    } catch (parseError) {
+      console.error('[INTENT] Failed to parse JSON:', parseError);
+      return {
+        success: false,
+        error: 'Failed to parse design intent response',
+        raw: response.content,
+      };
+    }
+
+    // Validate required fields
+    if (!intent.archetype || !intent.audience || !intent.tone) {
+      return {
+        success: false,
+        error: 'Incomplete design intent response',
+        partial: intent,
+      };
+    }
+
+    return {
+      success: true,
+      intent,
+    };
+  } catch (error) {
+    console.error('[INTENT] Extraction failed:', error);
+    return {
+      success: false,
+      error: error.message || 'Design intent extraction failed',
+    };
   }
 }

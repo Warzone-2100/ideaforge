@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs';
-import { analyzeResearch, generateFeatures, refineFeatures, generatePRD, generateDatabaseSchema, generateApiEndpoints, generateComponentTree, generatePrompt, generateStoryFiles, generateDesignBrief, chatWithExport, generateDesignVariations, expandToHomepage, chatWithDesignBrief, regenerateDesignBrief, analyzeDesignScreenshot, generateFromTemplate } from './services/aiService.js';
+import { analyzeResearch, generateFeatures, refineFeatures, generatePRD, generateDatabaseSchema, generateApiEndpoints, generateComponentTree, generatePrompt, generateStoryFiles, generateDesignBrief, chatWithExport, generateDesignVariations, expandToHomepage, chatWithDesignBrief, regenerateDesignBrief, analyzeDesignScreenshot, generateFromTemplate, generateDesignLanguage, chatWithDesignLanguage, generateDesignVariation, adaptTemplateContent, extractDesignIntent } from './services/aiService.js';
 import { generateSkillFiles } from './services/skillsService.js';
 
 dotenv.config();
@@ -280,6 +280,80 @@ app.post('/api/design/expand', async (req, res) => {
   }
 });
 
+// ============================================================================
+// DESIGN STUDIO V2 ENDPOINTS
+// ============================================================================
+
+// Generate design language from PRD context
+app.post('/api/design/language/generate', async (req, res) => {
+  try {
+    const { research, insights, features, prd } = req.body;
+    const result = await generateDesignLanguage({ research, insights, features, prd });
+    res.json(result);
+  } catch (error) {
+    console.error('Design language generation error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Chat with design language to modify tokens
+app.post('/api/design/language/chat', async (req, res) => {
+  try {
+    const { message, currentTokens } = req.body;
+    if (!message) {
+      return res.status(400).json({ success: false, error: 'Message is required' });
+    }
+    const result = await chatWithDesignLanguage(message, currentTokens || {});
+    res.json(result);
+  } catch (error) {
+    console.error('Design language chat error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Generate a design variation using design language + layout
+app.post('/api/design/variation/generate', async (req, res) => {
+  try {
+    const { pageType, layout, designLanguage, variationIndex, prdContext } = req.body;
+    if (!pageType || !designLanguage) {
+      return res.status(400).json({ success: false, error: 'Page type and design language are required' });
+    }
+    // Log PRD context for debugging
+    console.log('[DESIGN] PRD context received:', prdContext ? 'Yes' : 'No',
+      prdContext?.prd ? `PRD: ${prdContext.prd.substring(0, 100)}...` : 'No PRD');
+    const result = await generateDesignVariation({ pageType, layout, designLanguage, variationIndex, prdContext });
+    res.json(result);
+  } catch (error) {
+    console.error('Design variation generation error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Extract design intent from PRD context
+app.post('/api/design/extract-intent', async (req, res) => {
+  try {
+    const { prdContext } = req.body;
+
+    if (!prdContext) {
+      return res.status(400).json({
+        success: false,
+        error: 'prdContext is required'
+      });
+    }
+
+    console.log('[INTENT] Extracting design intent from PRD context');
+
+    const result = await extractDesignIntent(prdContext);
+    res.json(result);
+  } catch (error) {
+    console.error('Design intent extraction error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Analyze design screenshot (template inspiration)
 app.post('/api/templates/analyze', async (req, res) => {
   try {
@@ -326,6 +400,31 @@ app.post('/api/templates/analyze', async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to analyze screenshot'
+    });
+  }
+});
+
+// Adapt code template content based on PRD context (now archetype-aware)
+app.post('/api/templates/adapt', async (req, res) => {
+  try {
+    const { templateSlots, prdContext, designIntent } = req.body;
+
+    if (!templateSlots || !prdContext) {
+      return res.status(400).json({
+        success: false,
+        error: 'templateSlots and prdContext are required'
+      });
+    }
+
+    console.log(`[TEMPLATE] Adapting ${templateSlots.length} content slots${designIntent?.archetype ? ` (archetype: ${designIntent.archetype})` : ''}`);
+
+    const result = await adaptTemplateContent(templateSlots, prdContext, designIntent);
+    res.json(result);
+  } catch (error) {
+    console.error('Template content adaptation error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to adapt template content'
     });
   }
 });

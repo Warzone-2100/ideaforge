@@ -1032,6 +1032,296 @@ ${(f.edgeCases || ['Handle empty state', 'Handle loading state', 'Handle error s
       };
     }
   }
+
+  // ============================================================================
+  // DESIGN STUDIO V2 METHODS
+  // ============================================================================
+
+  /**
+   * Generate design language tokens from PRD context
+   * @param {Object} context - { research, insights, features, prd }
+   * @returns {Object} - { success, designLanguage: { colors, typography, radii, mood, references } }
+   */
+  async generateDesignLanguage(context) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/design/language/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(context),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to generate design language');
+      }
+
+      if (data._meta) {
+        trackUsage('generateDesignLanguage', data);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Design language generation error:', error);
+      // Mock fallback for development
+      return {
+        success: true,
+        designLanguage: {
+          colors: {
+            primary: '#6366F1',
+            secondary: '#8B5CF6',
+            accent: '#F59E0B',
+            background: '#09090B',
+            surface: '#18181B',
+            surfaceHover: '#27272A',
+            text: '#FAFAFA',
+            textMuted: '#A1A1AA',
+            border: '#27272A',
+            success: '#22C55E',
+            warning: '#F59E0B',
+            error: '#EF4444',
+          },
+          typography: {
+            fontFamily: 'Inter',
+            headingFont: 'Inter',
+            monoFont: 'JetBrains Mono',
+            baseSize: '16px',
+            scaleRatio: 1.25,
+            lineHeight: 1.5,
+            headingWeight: 600,
+            bodyWeight: 400,
+          },
+          spacing: { base: 4, scale: [0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64] },
+          radii: { none: '0', sm: '4px', md: '8px', lg: '12px', xl: '16px', full: '9999px' },
+          shadows: {
+            none: 'none',
+            sm: '0 1px 2px rgba(0,0,0,0.3)',
+            md: '0 4px 6px rgba(0,0,0,0.3)',
+            lg: '0 10px 15px rgba(0,0,0,0.3)',
+            xl: '0 20px 25px rgba(0,0,0,0.3)',
+          },
+          mood: ['minimal', 'professional'],
+          references: ['linear', 'vercel'],
+        },
+        _mock: true,
+      };
+    }
+  }
+
+  /**
+   * Chat to modify design language tokens
+   * @param {string} message - User's modification request
+   * @param {Object} currentTokens - Current design language state
+   * @returns {Object} - { success, message, updatedTokens }
+   */
+  async chatWithDesignLanguage(message, currentTokens) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/design/language/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, currentTokens }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to process design chat');
+      }
+
+      if (data._meta) {
+        trackUsage('chatWithDesignLanguage', data);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Design language chat error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to process design chat',
+      };
+    }
+  }
+
+  /**
+   * Extract design intent from PRD context
+   * @param {Object} prdContext - { research, insights, features, prd }
+   * @returns {Promise<{ success: boolean, intent?: Object, error?: string }>}
+   */
+  async extractDesignIntent(prdContext) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/design/extract-intent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prdContext }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('[AI] extractDesignIntent failed:', error);
+
+      // Return mock data for development if API fails
+      if (import.meta.env.DEV) {
+        console.warn('[AI] Using mock design intent');
+        return {
+          success: true,
+          intent: {
+            archetype: 'startup-velocity',
+            archetypeConfidence: 75,
+            archetypeReasoning: 'Mock: Product appears to be a productivity-focused SaaS tool',
+            audience: {
+              primary: 'teams',
+              sophistication: 'intermediate',
+              buyingPower: 'team',
+            },
+            positioning: {
+              category: 'Productivity Tool',
+              versus: ['Manual processes', 'Legacy solutions'],
+              uniqueAngle: 'AI-powered automation',
+            },
+            trustSignals: [
+              { type: 'social', value: 'Used by 1000+ teams', priority: 1 },
+            ],
+            tone: {
+              primary: 'energetic',
+              secondary: 'direct',
+              avoid: ['corporate', 'stiff'],
+            },
+            keyMessages: [
+              { priority: 1, message: 'Save time with AI-powered workflows' },
+              { priority: 2, message: 'Built for modern teams' },
+            ],
+          },
+        };
+      }
+
+      return {
+        success: false,
+        error: error.message || 'Failed to extract design intent',
+      };
+    }
+  }
+
+  /**
+   * Generate a design variation using design language + layout
+   * @param {Object} params - { pageType, layout, designLanguage, variationIndex }
+   * @returns {Object} - { success, variation: { html, code, description } }
+   */
+  async generateDesignVariation(params) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/design/variation/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to generate design variation');
+      }
+
+      if (data._meta) {
+        trackUsage('generateDesignVariation', data);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Design variation generation error:', error);
+      // Mock fallback
+      const { pageType, variationIndex } = params;
+      return {
+        success: true,
+        variation: {
+          id: `${pageType}-v${variationIndex + 1}-${Date.now()}`,
+          html: `<div class="p-8 bg-zinc-900 text-white">
+            <h1 class="text-2xl font-bold mb-4">${pageType} Variation ${variationIndex + 1}</h1>
+            <p class="text-zinc-400">Mock preview - connect backend for real generation</p>
+          </div>`,
+          code: `// ${pageType} variation ${variationIndex + 1}\nexport default function Page() {\n  return <div>...</div>\n}`,
+          description: `Mock variation ${variationIndex + 1} for ${pageType}`,
+        },
+        _mock: true,
+      };
+    }
+  }
+
+  /**
+   * Adapt code template content slots based on PRD context
+   * This is the efficient alternative to full page generation
+   * Now archetype-aware for brand-matching content
+   * @param {Array} templateSlots - Content slots to fill
+   * @param {Object} prdContext - PRD, research, insights, features
+   * @param {Object|null} designIntent - Archetype, tone, key messages, trust signals
+   */
+  async adaptTemplateContent(templateSlots, prdContext, designIntent = null) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/templates/adapt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateSlots, prdContext, designIntent }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return trackUsage('templateContent', data);
+    } catch (error) {
+      console.error('Template content adaptation error:', error);
+      // Mock fallback for development
+      return this.mockAdaptTemplateContent(templateSlots, prdContext);
+    }
+  }
+
+  // Mock fallback for template content adaptation
+  mockAdaptTemplateContent(templateSlots, prdContext) {
+    const productName = prdContext.features?.[0]?.name || 'ProductName';
+    const initials = productName.substring(0, 2).toUpperCase();
+
+    return {
+      success: true,
+      filledContent: {
+        logo_initials: initials,
+        product_name: productName,
+        nav_cta: 'Get Started',
+        page_title: `${productName} - Transform Your Workflow`,
+        hero_badge: 'Now in Beta',
+        hero_headline: `Transform Your Workflow with <br><span class="text-gradient">${productName}</span>`,
+        hero_subheadline: 'Streamline your process and boost productivity with our intelligent platform.',
+        cta_primary: 'Start Free Trial',
+        cta_secondary: 'Watch Demo',
+        features_headline: 'Powerful Features',
+        features_subheadline: 'Everything you need to succeed.',
+        features: (prdContext.features || []).slice(0, 6).map((f, i) => ({
+          icon: ['sparkles', 'zap', 'shield', 'brain', 'rocket', 'chart-bar'][i % 6],
+          title: f.name,
+          description: f.description,
+          tags: f.priority ? [f.priority] : [],
+        })),
+        roadmap_headline: 'Coming Soon',
+        roadmap: [
+          { title: 'Phase 1: Foundation', description: 'Core features and infrastructure', status: 'completed' },
+          { title: 'Phase 2: Growth', description: 'Advanced capabilities', status: 'in-progress' },
+          { title: 'Phase 3: Scale', description: 'Enterprise features', status: 'planned' },
+        ],
+        tech_stack: [
+          { name: 'AI Engine', icon: 'cpu' },
+          { name: 'Cloud Native', icon: 'cloud' },
+          { name: 'Analytics', icon: 'chart-bar' },
+          { name: 'Security', icon: 'shield' },
+        ],
+        footer_logo_initials: initials,
+        footer_copyright: `© 2025 ${productName}`,
+      },
+      _mock: true,
+    };
+  }
 }
 
 export const aiService = new AIService();
